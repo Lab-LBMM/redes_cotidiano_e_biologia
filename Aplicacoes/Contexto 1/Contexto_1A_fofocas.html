@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Por onde a notícia passou? · Percolação da informação na escola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.35.0/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/layout-base@2.0.1/layout-base.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cose-base@2.2.0/cose-base.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+<style>
+  :root{
+    --papel:#f6f3ec; --papel-2:#efeadf; --tinta:#1f2328; --tinta-2:#5b616b; --linha:#d9d2c3;
+    --acento:#d9480f; --acento-2:#fff1e6;
+    --raio:10px; --sombra:0 1px 2px rgba(31,35,40,.06),0 6px 18px rgba(31,35,40,.08);
+    --fonte:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --titulo:"Bricolage Grotesque",var(--fonte);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--fonte);color:var(--tinta);background:var(--papel);font-size:14px;line-height:1.4}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .app{display:grid;grid-template-rows:auto 1fr;height:100vh}
+  header{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--linha)}
+  header h1{font-family:var(--titulo);font-weight:800;font-size:22px;margin:0;letter-spacing:-.02em}
+  header h1 em{font-style:normal;color:var(--acento)}
+  header .sub{color:var(--tinta-2);font-size:13px}
+  header .grow{flex:1}
+  .corpo{display:grid;grid-template-columns:380px 1fr;min-height:0}
+  aside{border-right:1px solid var(--linha);display:flex;flex-direction:column;min-height:0}
+  .abas{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--linha)}
+  .aba{flex:1;border:0;background:none;padding:9px 4px 10px;border-bottom:3px solid transparent;cursor:pointer;color:var(--tinta-2);font-weight:700;font-size:13px}
+  .aba[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--acento)}
+  .painel{display:none;overflow-y:auto;padding:14px 16px 40px;flex:1}
+  .painel.ativo{display:block}
+  fieldset{border:0;margin:0 0 18px;padding:0}
+  legend,.rot{font-family:var(--titulo);font-weight:600;font-size:15px;margin-bottom:8px;padding:0}
+  .dica{color:var(--tinta-2);font-size:12.5px;margin:4px 0 0}
+  .linha{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .linha > input[type=text],.linha > select{flex:1;min-width:0}
+  .campo{display:block;margin-bottom:8px}
+  .campo > span{display:block;font-size:12.5px;color:var(--tinta-2);margin-bottom:3px;font-weight:700}
+  .campo input[type=text],.campo select{width:100%}
+  .dupla{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+  .ligacao{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;gap:6px;align-items:center;margin-bottom:6px}
+  .ligacao input{width:100%;min-width:0}
+  .props select{width:100%;min-width:0}
+  .props .val{min-width:0}
+  input[type=time]{min-width:0}
+  input[type=text],input[type=time],select,textarea{border:1px solid var(--linha);background:#fff;border-radius:8px;padding:7px 9px}
+  input[type=text]:focus,input[type=time]:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-offset:0;border-color:transparent}
+  textarea{width:100%;min-height:110px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+  input[type=color]{width:38px;height:32px;padding:2px;border:1px solid var(--linha);border-radius:8px;background:#fff;cursor:pointer}
+  input[type=range]{flex:1;accent-color:var(--acento)}
+  output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums;color:var(--tinta-2)}
+  .btn{border:1px solid var(--linha);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:700;white-space:nowrap}
+  .btn:hover{background:var(--papel-2)}
+  .btn.prim{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+  .btn.prim:hover{background:#000}
+  .btn.acento{background:var(--acento);color:#fff;border-color:var(--acento)}
+  .btn.perigo{color:#b42318}
+  .btn.peq{padding:4px 9px;font-size:12.5px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .grade-btn{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .seg{display:inline-flex;border:1px solid var(--linha);border-radius:8px;overflow:hidden;background:#fff}
+  .seg button{border:0;background:none;padding:7px 12px;cursor:pointer;font-weight:700}
+  .seg button + button{border-left:1px solid var(--linha)}
+  .seg button[aria-pressed="true"]{background:var(--tinta);color:#fff}
+  .interruptor{display:flex;align-items:center;gap:8px;cursor:pointer;margin:6px 0}
+  .interruptor input{width:16px;height:16px;accent-color:var(--acento);flex:none}
+  .cartao{background:#fff;border:1px solid var(--linha);border-radius:var(--raio);padding:12px;margin-bottom:14px}
+  .cartao h3{margin:0 0 8px;font-family:var(--titulo);font-weight:600;font-size:14.5px}
+  .props{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:center}
+  .props label{color:var(--tinta-2);font-size:13px}
+  .props .val{display:flex;gap:6px;align-items:center}
+  .soltar{border:2px dashed var(--linha);border-radius:var(--raio);padding:18px;text-align:center;color:var(--tinta-2);cursor:pointer;background:#fff;transition:.15s}
+  .soltar.sobre{border-color:var(--acento);background:var(--acento-2);color:var(--tinta)}
+  .soltar strong{color:var(--tinta)}
+  pre.ex{background:var(--papel-2);border-radius:8px;padding:8px 10px;font-size:12px;margin:6px 0 10px;overflow-x:auto;white-space:pre}
+  details{margin-bottom:12px} summary{cursor:pointer;font-weight:700}
+  .temas{display:flex;flex-wrap:wrap;gap:6px}
+  .tema{display:flex;align-items:center;gap:6px}
+  .tema i,.chip i{display:inline-block;width:10px;height:10px;border-radius:50%}
+  .numeros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .num{background:#fff;border:1px solid var(--linha);border-radius:var(--raio);padding:9px 10px}
+  .num b{display:block;font-family:var(--titulo);font-size:21px;font-weight:800;line-height:1.1}
+  .num span{font-size:12px;color:var(--tinta-2)}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid var(--linha);border-radius:var(--raio);overflow:hidden;margin-bottom:14px}
+  th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--papel-2)}
+  th{background:var(--papel-2);font-weight:700;font-size:12px;color:var(--tinta-2);cursor:pointer;user-select:none}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tbody tr[data-id]{cursor:pointer} tbody tr[data-id]:hover{background:var(--acento-2)}
+  .barra{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--papel-2);min-width:50px}
+  .barra i{display:block;height:100%}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .chip{font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid var(--linha);background:var(--papel);display:inline-flex;align-items:center;gap:5px}
+  .chip button{border:0;background:none;cursor:pointer;padding:0;color:var(--tinta-2);font-size:14px;line-height:1}
+  .chip.link{cursor:pointer} .chip.link:hover{border-color:var(--tinta)}
+  .lista-salas{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;max-height:260px;overflow:auto}
+  main{position:relative;min-width:0;min-height:0}
+  #cy{position:absolute;inset:0}
+  .flutua{position:absolute;z-index:5}
+  .ferramentas{top:12px;left:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 250px)}
+  .ferramentas .btn{box-shadow:var(--sombra)}
+  .legenda{top:12px;right:12px;background:rgba(255,255,255,.93);border:1px solid var(--linha);border-radius:var(--raio);padding:9px 12px;box-shadow:var(--sombra);font-size:12.5px;display:grid;gap:4px;max-width:230px;max-height:calc(100% - 100px);overflow:auto}
+  .legenda div{display:flex;align-items:center;gap:7px}
+  .legenda .sw{width:13px;height:13px;display:inline-block;border-radius:50%;flex:none}
+  .legenda .grad{height:10px;flex:1;border-radius:5px;min-width:80px}
+  .legenda hr{border:0;border-top:1px solid var(--linha);margin:3px 0;width:100%}
+  .aviso{top:60px;left:50%;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:8px 14px;border-radius:999px;box-shadow:var(--sombra);font-weight:700;display:none;align-items:center;gap:10px}
+  .aviso.on{display:flex}
+  .aviso button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:999px;padding:3px 10px;cursor:pointer;font-weight:700}
+  .player{left:50%;bottom:14px;transform:translateX(-50%);background:var(--tinta);color:#fff;border-radius:14px;padding:9px 12px;box-shadow:var(--sombra);display:none;align-items:center;gap:10px;width:min(620px,calc(100% - 24px))}
+  .player.on{display:flex}
+  .player button{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-weight:700}
+  .player select{background:rgba(255,255,255,.14);color:#fff;border:0;padding:4px 6px}
+  .player select option{color:#000}
+  .player input[type=range]{accent-color:#ffa94d}
+  .player .txt{font-size:12.5px;min-width:150px;line-height:1.25}
+  .selecao{left:12px;bottom:12px;width:310px;max-height:calc(100% - 80px);overflow-y:auto;background:#fff;border:1px solid var(--linha);border-radius:var(--raio);box-shadow:var(--sombra);padding:12px;display:none}
+  .selecao.on{display:block}
+  .selecao h3{margin:0 0 8px;font-family:var(--titulo);font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .selecao .x{border:0;background:none;cursor:pointer;font-size:18px;color:var(--tinta-2)}
+  .selecao .sub{font-size:12px;color:var(--tinta-2);font-weight:700;margin:8px 0 2px}
+  .player.on ~ .selecao{bottom:76px}
+  .vazio{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;color:var(--tinta-2);text-align:center;padding:30px}
+  .vazio.on{display:flex}
+  .vazio div{max-width:400px} .vazio b{font-family:var(--titulo);font-size:20px;color:var(--tinta);display:block;margin-bottom:6px}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(30px);opacity:0;background:var(--tinta);color:#fff;padding:9px 16px;border-radius:8px;transition:.25s;z-index:50;pointer-events:none;max-width:90vw}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal-fundo{position:fixed;inset:0;background:rgba(20,22,28,.45);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+  .modal-fundo.on{display:flex}
+  .modal{background:var(--papel);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:min(500px,100%);max-height:90vh;overflow:auto;padding:18px}
+  .modal h2{margin:0 0 10px;font-family:var(--titulo);font-size:19px}
+  .modal .acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .modal.grande{width:min(1000px,100%);height:min(720px,90vh);display:flex;flex-direction:column}
+  #cySalas{flex:1;min-height:300px;border:1px solid var(--linha);border-radius:var(--raio);background:#fff;margin-top:10px}
+  .ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  kbd{background:#fff;border:1px solid var(--linha);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}
+  .ok{color:#2b8a3e;font-weight:700} .meio{color:#e67700;font-weight:700}
+  @media (max-width: 880px){
+    .app{height:auto;min-height:100vh}
+    .corpo{grid-template-columns:minmax(0,1fr)}
+    aside{min-width:0}
+    main{height:68vh;order:-1;border-bottom:1px solid var(--linha)}
+    aside{border-right:0}
+    .painel{overflow:visible}
+    header .sub{display:none}
+    .selecao{width:calc(100% - 24px)}
+    .legenda{font-size:11.5px;padding:6px 9px;max-width:150px}
+    .ferramentas{max-width:calc(100% - 170px)}
+    .player .txt{min-width:0}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Por onde a notícia <em>passou?</em></h1>
+    <span class="sub">Mapa de percolação de uma informação na escola</span>
+    <span class="grow"></span>
+    <button class="btn peq" id="btnAjuda">Como usar</button>
+  </header>
+  <div class="corpo">
+    <aside>
+      <div class="abas" role="tablist">
+        <button class="aba" role="tab" aria-selected="true" data-aba="construir">Construir</button>
+        <button class="aba" role="tab" aria-selected="false" data-aba="dados">Importar</button>
+        <button class="aba" role="tab" aria-selected="false" data-aba="aparencia">Aparência</button>
+        <button class="aba" role="tab" aria-selected="false" data-aba="analise">Análise</button>
+      </div>
+
+      <!-- CONSTRUIR -->
+      <section class="painel ativo" id="p-construir">
+        <fieldset>
+          <legend>Registrar a resposta de um aluno</legend>
+          <div class="dupla">
+            <label class="campo"><span>Nome *</span><input type="text" id="rNome" list="dlAlunos" autocomplete="off"></label>
+            <label class="campo"><span>Sala</span><input type="text" id="rSala" list="dlSalas" autocomplete="off" placeholder="Ex.: 7A"></label>
+          </div>
+          <label class="campo"><span>Quem te contou?</span><input type="text" id="rDe" list="dlAlunos" autocomplete="off" placeholder="Deixe vazio se não lembra"></label>
+          <label class="campo"><span>Para quem você contou?</span><input type="text" id="rPara" autocomplete="off" placeholder="Vários nomes separados por vírgula"></label>
+          <div class="dupla">
+            <label class="campo"><span>Como ficou sabendo?</span>
+              <select id="rMeio"><option value="">—</option><option>Pessoalmente</option><option>WhatsApp</option><option>Instagram</option><option>Outra rede social</option><option>Outro</option></select></label>
+            <label class="campo"><span>Que horas?</span><input type="time" id="rHora" style="width:100%"></label>
+          </div>
+          <label class="interruptor"><input type="checkbox" id="rSemente"> <span>É <b>semente</b> (recebeu a notícia da equipe)</span></label>
+          <label class="interruptor"><input type="checkbox" id="rNao"> <span>Não ficou sabendo da notícia</span></label>
+          <div class="linha" style="justify-content:flex-end;margin-top:8px">
+            <button class="btn" id="rLimpar">Limpar</button>
+            <button class="btn prim" id="rRegistrar">Registrar resposta</button>
+          </div>
+          <p class="dica">Nomes novos viram nós. Se dois relatos descrevem a mesma passagem (A diz que contou para B e B diz que ouviu de A), ela fica <b>confirmada</b>.</p>
+        </fieldset>
+        <fieldset>
+          <legend>Ligação direta</legend>
+          <div class="ligacao">
+            <input type="text" id="lDe" list="dlAlunos" placeholder="Quem contou">
+            <span>→</span>
+            <input type="text" id="lPara" list="dlAlunos" placeholder="Para quem">
+            <button class="btn" id="lLigar">Ligar</button>
+          </div>
+          <label class="interruptor"><input type="checkbox" id="chkConectar"> <span><b>Modo conectar:</b> toque em quem contou e depois em quem ouviu</span></label>
+        </fieldset>
+        <fieldset>
+          <legend>Salas da escola</legend>
+          <div class="linha">
+            <input type="text" id="inSalas" placeholder="Ex.: 6A, 6B, 7A, 7B">
+            <button class="btn" id="btnAddSalas">Adicionar</button>
+          </div>
+          <p class="dica">Cadastre todas as salas, inclusive as que talvez não recebam a notícia: assim o mapa mostra onde ela <i>não</i> chegou.</p>
+          <div class="chips" id="chipsSalas"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Editar</legend>
+          <div class="grade-btn">
+            <button class="btn" id="btnDesfazer">↶ Desfazer</button>
+            <button class="btn perigo" id="btnExcluir">Excluir seleção</button>
+            <button class="btn" id="btnExemplo">Carregar exemplo</button>
+            <button class="btn perigo" id="btnLimpar">Limpar tudo</button>
+          </div>
+          <p class="dica" style="margin-top:10px">
+            Clique num aluno para ver o <b>caminho</b> da notícia até ele e a <b>cascata</b> que ele gerou. Clique duplo para renomear.
+            Para unir dois nomes do mesmo aluno (ex.: “João” e “João P.”), selecione os dois com <kbd>Shift</kbd> e use <i>Juntar</i>.
+            <kbd>Del</kbd> exclui, <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz.
+          </p>
+        </fieldset>
+      </section>
+
+      <!-- DADOS -->
+      <section class="painel" id="p-dados">
+        <fieldset>
+          <legend>Importar arquivo</legend>
+          <div class="soltar" id="zonaSoltar" tabindex="0">
+            <strong>Arraste um arquivo aqui</strong><br>ou clique para escolher<br>
+            <span class="dica">.csv, .tsv, .txt ou .json (inclusive a exportação do Google Formulários)</span>
+          </div>
+          <input type="file" id="inArquivo" accept=".csv,.tsv,.txt,.json,text/csv,application/json" hidden>
+          <div class="linha" style="margin-top:10px">
+            <div class="seg" id="segModo">
+              <button data-modo="acrescentar" aria-pressed="true">Acrescentar</button>
+              <button data-modo="substituir" aria-pressed="false">Substituir rede</button>
+            </div>
+          </div>
+          <p class="dica">Dica: importe primeiro a <b>lista de alunos</b> da escola e depois as respostas: quem não aparece em nenhuma passagem fica marcado como “não soube”.</p>
+        </fieldset>
+        <fieldset>
+          <legend>…ou colar o texto</legend>
+          <textarea id="inTexto" placeholder="nome,sala,quem_te_contou,para_quem_contou&#10;Ana,7A,,Bruno;Carla&#10;Bruno,7A,Ana,Diego"></textarea>
+          <div class="linha" style="justify-content:flex-end;margin-top:6px"><button class="btn prim" id="btnImportarTexto">Importar texto</button></div>
+        </fieldset>
+        <details open>
+          <summary>Formatos aceitos</summary>
+          <p class="dica"><b>1. Respostas</b> (uma linha por aluno entrevistado). Vários nomes em “para quem” separados por <b>;</b> ou <b>|</b> (ou vírgula, se o separador do arquivo for ;).</p>
+          <pre class="ex">nome,sala,quem_te_contou,para_quem_contou,meio,hora
+Ana,7A,equipe,Bruno;Carla,Pessoalmente,07:30
+Bruno,7A,Ana,Diego,WhatsApp,08:10
+Diego,8B,Bruno,,Pessoalmente,08:40
+Elisa,9A,,,,</pre>
+          <p class="dica">Se “quem te contou” for <i>equipe, professor(a), direção</i> ou <i>pesquisa</i>, o aluno vira <b>semente</b>. Uma coluna <i>soube</i> (sim/não) ou <i>semente</i> (sim) também é reconhecida.</p>
+          <p class="dica"><b>2. Lista de passagens</b> (uma linha por “A contou para B”):</p>
+          <pre class="ex">de,sala_de,para,sala_para,hora,meio
+Ana,7A,Bruno,7A,08:10,WhatsApp</pre>
+          <p class="dica"><b>3. Lista de alunos</b> (para saber quem não recebeu): <code>nome,sala</code> (+ <code>semente</code> opcional).</p>
+          <p class="dica">O <b>JSON</b> exportado aqui restaura tudo: rede, posições e aparência. Planilhas do Excel/Sheets: salve como CSV.</p>
+        </details>
+        <details>
+          <summary>Perguntas sugeridas para um formulário</summary>
+          <pre class="ex">1. Seu nome
+2. Sua sala (turma)
+3. Você ficou sabendo da notícia? (sim/não)
+4. Quem te contou?
+5. Como você ficou sabendo? (pessoalmente,
+   WhatsApp, Instagram, outro)
+6. Mais ou menos que horas?
+7. Para quem você contou? (nomes separados
+   por vírgula)</pre>
+          <p class="dica">Com essas perguntas, o CSV exportado do Google Formulários pode ser importado direto: as colunas são reconhecidas pelo texto das perguntas.</p>
+        </details>
+        <fieldset>
+          <legend>Exportar</legend>
+          <div class="grade-btn">
+            <button class="btn" id="btnExpPassagens">CSV de passagens</button>
+            <button class="btn" id="btnExpAlunos">CSV de alunos + métricas</button>
+            <button class="btn" id="btnExpJSON">JSON (tudo)</button>
+            <button class="btn" id="btnExpPNG">Imagem PNG</button>
+          </div>
+          <label class="interruptor"><input type="checkbox" id="chkPngTransp"> PNG com fundo transparente</label>
+          <p class="rot" style="margin-top:12px;font-size:14px">Modelos para preencher</p>
+          <div class="linha" style="flex-wrap:wrap">
+            <button class="btn peq" data-modelo="respostas">Respostas</button>
+            <button class="btn peq" data-modelo="passagens">Passagens</button>
+            <button class="btn peq" data-modelo="alunos">Lista de alunos</button>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- APARÊNCIA -->
+      <section class="painel" id="p-aparencia">
+        <div class="cartao">
+          <h3>Layout</h3>
+          <div class="props">
+            <label>Tipo</label>
+            <select id="selLayout" data-bind="layout" data-relayout>
+              <option value="salas">Agrupado por sala</option>
+              <option value="arvore">Árvore de propagação (gerações)</option>
+              <option value="concentrico">Ondas a partir das sementes</option>
+              <option value="forca">Força (orgânico)</option>
+              <option value="circulo">Círculo por sala</option>
+            </select>
+            <label>Espaçamento</label>
+            <div class="val"><input type="range" min="30" max="200" step="5" data-bind="espacamento" data-relayout><output data-out="espacamento"></output></div>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="mostrarNao"> Mostrar quem não soube</label>
+          <label class="interruptor"><input type="checkbox" data-bind="autoLayout"> Reorganizar ao adicionar alunos</label>
+          <div class="linha" style="margin-top:6px">
+            <button class="btn prim" id="btnLayout">Reorganizar</button>
+            <button class="btn" id="btnAjustar2">Ajustar à tela</button>
+          </div>
+        </div>
+        <div class="cartao">
+          <h3>Temas prontos</h3>
+          <div class="temas" id="temas"></div>
+        </div>
+        <div class="cartao">
+          <h3>Cor dos alunos</h3>
+          <div class="props">
+            <label>Colorir por</label>
+            <select data-bind="colorir">
+              <option value="sala">Sala</option>
+              <option value="geracao">Geração (quando soube)</option>
+              <option value="repasses">Nº de repasses</option>
+              <option value="unica">Cor única</option>
+            </select>
+          </div>
+          <div id="opSala" style="margin-top:10px">
+            <div class="lista-salas" id="coresSalas"></div>
+          </div>
+          <div id="opGeracao" class="props" style="margin-top:10px">
+            <label>Sementes</label><div class="val"><input type="color" data-bind="gerIni"></div>
+            <label>Última geração</label><div class="val"><input type="color" data-bind="gerFim"></div>
+          </div>
+          <div id="opRepasses" class="props" style="margin-top:10px">
+            <label>Poucos</label><div class="val"><input type="color" data-bind="repIni"></div>
+            <label>Muitos</label><div class="val"><input type="color" data-bind="repFim"></div>
+          </div>
+          <div id="opUnica" class="props" style="margin-top:10px">
+            <label>Cor</label><div class="val"><input type="color" data-bind="corUnica"></div>
+          </div>
+          <div class="props" style="margin-top:10px">
+            <label>Contorno da semente</label><div class="val"><input type="color" data-bind="corSemente"></div>
+            <label>Não souberam</label><div class="val"><input type="color" data-bind="corNao"></div>
+          </div>
+        </div>
+        <div class="cartao">
+          <h3>Forma e tamanho</h3>
+          <div class="props">
+            <label>Forma</label><select data-bind="forma" class="selForma"></select>
+            <label>Forma da semente</label><select data-bind="formaSemente" class="selForma"></select>
+            <label>Tamanho por</label>
+            <select data-bind="tamanhoPor">
+              <option value="repasses">Nº de pessoas para quem contou</option>
+              <option value="alcance">Alcance (cascata gerada)</option>
+              <option value="fixo">Fixo</option>
+            </select>
+            <label>Tamanho base</label><div class="val"><input type="range" min="10" max="80" data-bind="tamanho"><output data-out="tamanho"></output></div>
+          </div>
+        </div>
+        <div class="cartao">
+          <h3>Setas (passagens)</h3>
+          <div class="props">
+            <label>Cor</label>
+            <select data-bind="corArestaModo">
+              <option value="unica">Cor única</option>
+              <option value="origem">Cor de quem contou</option>
+            </select>
+            <label>Cor única</label><div class="val"><input type="color" data-bind="corAresta"></div>
+            <label>Espessura</label><div class="val"><input type="range" min="0.5" max="8" step="0.5" data-bind="larguraAresta"><output data-out="larguraAresta"></output></div>
+            <label>Ponta da seta</label><div class="val"><input type="range" min="0.5" max="3" step="0.1" data-bind="seta"><output data-out="seta"></output></div>
+            <label>Curva</label>
+            <select data-bind="curva"><option value="bezier">Curva</option><option value="straight">Reta</option><option value="unbundled-bezier">Ondulada</option><option value="taxi">Em degraus</option></select>
+            <label>Rótulo</label>
+            <select data-bind="rotuloAresta"><option value="nenhum">Nenhum</option><option value="meio">Meio (WhatsApp…)</option><option value="hora">Horário</option></select>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="pontes"> Destacar passagens entre salas</label>
+          <div class="props" style="margin-left:24px"><label>Cor das pontes</label><div class="val"><input type="color" data-bind="corPonte"></div></div>
+          <label class="interruptor"><input type="checkbox" data-bind="tracejar"> Tracejar passagens não confirmadas (só um lado relatou)</label>
+        </div>
+        <div class="cartao">
+          <h3>Rótulos e fundo</h3>
+          <div class="props">
+            <label>Mostrar nomes</label><div class="val"><input type="checkbox" data-bind="rotulos"></div>
+            <label>Fonte</label><div class="val"><input type="range" min="8" max="28" data-bind="fonte"><output data-out="fonte"></output></div>
+            <label>Cor do texto</label><div class="val"><input type="color" data-bind="corTexto"></div>
+            <label>Fundo</label><div class="val"><input type="color" data-bind="fundo"></div>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="destacar"> Ao clicar, destacar caminho e cascata</label>
+          <label class="interruptor"><input type="checkbox" data-bind="legenda"> Mostrar legenda</label>
+        </div>
+        <button class="btn" id="btnRestaurar">Restaurar aparência padrão</button>
+      </section>
+
+      <!-- ANÁLISE -->
+      <section class="painel" id="p-analise">
+        <div class="numeros" id="numeros"></div>
+        <div class="linha" style="margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn acento" id="btnPlay2">▶ Reproduzir propagação</button>
+          <button class="btn" id="btnRedeSalas">Rede de salas</button>
+        </div>
+        <p class="rot">Salas</p>
+        <table id="tabSalas"><thead><tr><th>Sala</th><th class="n">Souberam</th><th></th><th class="n" title="Geração em que a notícia chegou">Chegou</th><th class="n" title="Passagens recebidas de outras salas">Vinda de fora</th></tr></thead><tbody></tbody></table>
+        <p class="rot">Quem mais repassou</p>
+        <table id="tabTop"><thead><tr><th>Aluno</th><th>Sala</th><th class="n" title="Pessoas para quem contou">Contou p/</th><th class="n" title="Quantas pessoas a notícia alcançou a partir dele (cascata)">Alcance</th><th class="n" title="Passagens para outras salas">Pontes</th></tr></thead><tbody></tbody></table>
+        <p class="rot">Sementes</p>
+        <table id="tabSementes"><thead><tr><th>Semente</th><th>Sala</th><th class="n">Cascata</th><th class="n">Salas</th><th class="n">Gerações</th></tr></thead><tbody></tbody></table>
+        <div class="cartao" id="outros"></div>
+        <details>
+          <summary>O que é percolação?</summary>
+          <p class="dica"><b>Percolação</b> é o estudo de quando algo consegue atravessar um meio: a água pelo pó de café, uma doença por uma população, uma notícia por uma escola. Cada passagem de um aluno a outro é um “poro” aberto. Se existem caminhos suficientes, a informação <i>percola</i> e chega a quase todas as salas; se há poucos, ela fica presa em grupos isolados.</p>
+          <p class="dica"><b>Geração</b>: quantos passos a notícia levou desde as sementes. <b>Alcance</b>: quantas pessoas ficaram sabendo “descendo” a partir de um aluno. <b>Pontes</b>: passagens entre salas diferentes, essenciais para a notícia sair do grupo de origem. <b>Confirmada</b>: quem contou e quem ouviu relataram a mesma passagem.</p>
+        </details>
+      </section>
+    </aside>
+
+    <main>
+      <div id="cy" aria-label="Rede de propagação"></div>
+      <div class="flutua ferramentas">
+        <button class="btn peq" id="btnZoomMais" title="Aproximar">＋</button>
+        <button class="btn peq" id="btnZoomMenos" title="Afastar">－</button>
+        <button class="btn peq" id="btnAjustar">Ajustar</button>
+        <button class="btn peq" id="btnLayout2">Reorganizar</button>
+        <button class="btn peq acento" id="btnPlay">▶ Propagação</button>
+      </div>
+      <div class="flutua legenda" id="legenda"></div>
+      <div class="flutua aviso" id="aviso"><span id="avisoTxt"></span><button id="avisoSair">Sair</button></div>
+      <div class="flutua player" id="player">
+        <button id="pPlay" title="Reproduzir/pausar">▶</button>
+        <input type="range" id="pSlider" min="0" max="1" value="0">
+        <select id="pModo" title="Passos por"><option value="geracao">Gerações</option><option value="hora">Horário</option></select>
+        <span class="txt" id="pTxt"></span>
+        <button id="pFechar" title="Sair">✕</button>
+      </div>
+      <div class="flutua selecao" id="selecao"></div>
+      <div class="vazio" id="vazio"><div><b>Nenhum dado ainda</b>Cadastre as salas, registre as respostas dos alunos na aba <i>Construir</i>, importe um arquivo ou carregue o exemplo.</div></div>
+    </main>
+  </div>
+</div>
+
+<datalist id="dlAlunos"></datalist>
+<datalist id="dlSalas"></datalist>
+<div class="modal-fundo" id="modalFundo"><div class="modal" id="modal"></div></div>
+<div class="modal-fundo" id="salasFundo">
+  <div class="modal grande">
+    <h2>Rede de salas</h2>
+    <div class="ctrl">
+      <label>Layout <select id="sLayout"><option value="circle">Círculo</option><option value="fcose">Força</option></select></label>
+      <label class="interruptor" style="margin:0"><input type="checkbox" id="sVazias" checked> Mostrar salas não alcançadas</label>
+      <span style="flex:1"></span>
+      <button class="btn" id="sPNG">Baixar PNG</button>
+      <button class="btn prim" id="sFechar">Fechar</button>
+    </div>
+    <p class="dica" id="sInfo"></p>
+    <div id="cySalas"></div>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const EX_ALUNOS = `Mateus|6A|
+Murilo|6A|
+Kauã|6A|
+Bianca|6A|
+Cecília|6A|
+Gael|6A|
+Igor|6A|
+Rafael|6A|
+Ana|6B|
+Valentina|6B|
+Caio|6B|
+Larissa|6B|
+Isabela|6B|
+Helena|6B|
+Theo|6B|
+Miguel|7A|1
+Yasmin|7A|1
+Tainá|7A|
+Arthur|7A|
+Henrique|7A|
+Thiago|7A|
+Júlia|7A|
+Gustavo|7B|
+Eduarda|7B|
+Lívia|7B|
+Luana|7B|
+Lara|7B|
+Benício|7B|
+Sofia|7B|
+Bruno|8A|
+Samuel|8A|
+Manuela|8A|
+Joaquim|8A|
+Pedro|8A|
+Otávio|8A|
+Heitor|8A|
+Alice|8B|1
+Lorenzo|8B|
+Olívia|8B|
+Melissa|8B|
+Paula|8B|
+Clara|8B|
+Enzo|8B|
+Fernanda|9A|
+Felipe|9A|
+Carla|9A|
+Nicole|9A|
+Lucas|9A|
+Bernardo|9A|
+Rebeca|9B|
+Beatriz|9B|
+Gabriela|9B|
+Nathan|9B|
+Laura|9B|
+Elisa|9B|
+Diego|9B|`;
+const EX_REPASSES = `Miguel|Heitor|07:56|WhatsApp|ambos
+Miguel|Tainá|07:59|Pessoalmente|ambos
+Alice|Fernanda|07:58|Pessoalmente|ambos
+Alice|Paula|07:42|WhatsApp|receptor
+Heitor|Sofia|08:22|WhatsApp|receptor
+Heitor|Joaquim|08:26|Pessoalmente|ambos
+Tainá|Henrique|08:32|Pessoalmente|receptor
+Tainá|Enzo|08:24|WhatsApp|receptor
+Sofia|Eduarda|08:39|Pessoalmente|ambos
+Sofia|Gustavo|09:01|WhatsApp|ambos
+Enzo|Paula|08:55|WhatsApp|ambos
+Henrique|Bernardo|08:43|Pessoalmente|receptor
+Henrique|Enzo|09:05|Pessoalmente|ambos
+Henrique|Arthur|08:43|Pessoalmente|receptor
+Eduarda|Benício|08:50|Pessoalmente|ambos
+Bernardo|Melissa|08:52|Pessoalmente|ambos
+Bernardo|Carla|09:13|WhatsApp|ambos
+Benício|Lorenzo|09:28|Pessoalmente|ambos
+Gustavo|Lívia|09:43|Instagram|emissor
+Gustavo|Luana|09:42|Pessoalmente|ambos
+Gustavo|Clara|09:43|WhatsApp|ambos
+Carla|Isabela|09:36|WhatsApp|emissor
+Lorenzo|Melissa|09:37|Instagram|emissor
+Isabela|Helena|10:06|Pessoalmente|receptor
+Luana|Samuel|09:55|Pessoalmente|ambos
+Luana|Eduarda|10:20|WhatsApp|receptor
+Luana|Lorenzo|10:12|WhatsApp|ambos
+Luana|Lara|10:02|Pessoalmente|ambos
+Lívia|Sofia|10:16|Pessoalmente|emissor
+Lívia|Eduarda|10:01|Instagram|ambos
+Lívia|Lara|10:00|WhatsApp|ambos
+Clara|Valentina|10:26|Pessoalmente|ambos
+Samuel|Igor|10:36|WhatsApp|ambos
+Samuel|Isabela|10:16|Pessoalmente|ambos
+Samuel|Otávio|10:23|Pessoalmente|ambos
+Helena|Larissa|10:51|WhatsApp|ambos
+Helena|Melissa|10:22|Pessoalmente|ambos
+Otávio|Valentina|10:42|Pessoalmente|ambos
+Otávio|Bruno|10:51|WhatsApp|ambos
+Valentina|Enzo|10:37|Pessoalmente|ambos
+Valentina|Melissa|11:02|WhatsApp|emissor
+Igor|Cecília|11:16|WhatsApp|ambos
+Igor|Paula|10:59|WhatsApp|receptor
+Larissa|Isabela|11:19|Pessoalmente|ambos
+Larissa|Theo|11:18|WhatsApp|receptor`;
+
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+
+if (typeof cytoscape === 'undefined') {
+  document.body.innerHTML = '<p style="padding:30px;font-family:sans-serif">Não foi possível carregar a biblioteca Cytoscape.js. Verifique a conexão com a internet e recarregue a página.</p>';
+  return;
+}
+let TEM_FCOSE = false;
+try { if (typeof cytoscapeFcose !== 'undefined'){ try { cytoscape.use(cytoscapeFcose); } catch(e){} } TEM_FCOSE = !!cytoscape('layout', 'fcose'); } catch(e){ TEM_FCOSE = false; }
+
+/* ---------- Aparência ---------- */
+const PALETA = ['#4263eb','#f59f00','#0ca678','#e64980','#7048e8','#1098ad','#d9480f','#74b816','#ae3ec9','#495057','#c92a2a','#3bc9db','#ffd43b','#5c940d','#862e9c','#a61e4d'];
+const PADRAO = {
+  layout:'salas', espacamento:70, autoLayout:true, mostrarNao:true,
+  colorir:'sala', coresSala:{}, gerIni:'#c92a2a', gerFim:'#ffd43b', repIni:'#d0ebff', repFim:'#1864ab', corUnica:'#4263eb',
+  corSemente:'#d9480f', corNao:'#ced4da',
+  forma:'ellipse', formaSemente:'star', tamanhoPor:'repasses', tamanho:26,
+  corArestaModo:'unica', corAresta:'#5c636e', larguraAresta:2, seta:1.1, curva:'bezier', rotuloAresta:'nenhum',
+  pontes:true, corPonte:'#d9480f', tracejar:true,
+  rotulos:true, fonte:12, corTexto:'#1f2328', fundo:'#fbfaf6', destacar:true, legenda:true
+};
+const TEMAS = [
+  {nome:'Padrão', cores:['#4263eb','#f59f00','#0ca678','#d9480f'], v:{}},
+  {nome:'Noite', cores:['#15171d','#7aa2ff','#ffc857','#ff7a59'], v:{fundo:'#15171d', corTexto:'#e9e6df', corAresta:'#8b93a1', corNao:'#3a3f4b', corPonte:'#ff922b', corSemente:'#ffd43b', repIni:'#22314a', repFim:'#74c0fc'}},
+  {nome:'Calor', cores:['#c92a2a','#f76707','#ffd43b','#fff9db'], v:{colorir:'geracao', gerIni:'#c92a2a', gerFim:'#ffe066', corAresta:'#868e96', corPonte:'#1c7ed6', corSemente:'#1c7ed6', fundo:'#fffdf7'}},
+  {nome:'Impressão P&B', cores:['#ffffff','#adb5bd','#495057','#000000'], v:{colorir:'repasses', repIni:'#f1f3f5', repFim:'#212529', corAresta:'#343a40', corPonte:'#000000', corSemente:'#000000', corNao:'#ffffff', fundo:'#ffffff', corTexto:'#000000'}}
+];
+const FORMAS = [['ellipse','Círculo'],['round-rectangle','Quadrado arredondado'],['rectangle','Quadrado'],['triangle','Triângulo'],['diamond','Losango'],['hexagon','Hexágono'],['star','Estrela'],['vee','Vê'],['tag','Etiqueta']];
+
+function mesclar(base, extra){
+  const r = clone(base);
+  (function m(a, b){ for (const k in b){ if (k === 'coresSala'){ a[k] = Object.assign({}, a[k], b[k]); continue; } if (b[k] && typeof b[k]==='object' && !Array.isArray(b[k]) && a[k] && typeof a[k]==='object') m(a[k], b[k]); else if (k in a) a[k] = b[k]; } })(r, extra||{});
+  return r;
+}
+const getPath = (o,p) => p.split('.').reduce((a,k)=>a&&a[k], o);
+const setPath = (o,p,v) => { const ks=p.split('.'); const last=ks.pop(); ks.reduce((a,k)=>a[k],o)[last]=v; };
+const hex2rgb = h => { h = h.replace('#',''); if (h.length===3) h = h.split('').map(c=>c+c).join(''); const n = parseInt(h,16); return [n>>16&255, n>>8&255, n&255]; };
+const mix = (a, b, t) => { const A = hex2rgb(a), B = hex2rgb(b); return '#' + A.map((v,i) => Math.round(v + (B[i]-v)*Math.max(0,Math.min(1,t))).toString(16).padStart(2,'0')).join(''); };
+
+let S = clone(PADRAO);
+let modoImport = 'acrescentar';
+let M = { maxGen: 0, maxOut: 1, maxAlc: 1 };
+
+/* ---------- Utilidades de nomes ---------- */
+const chave = s => String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ');
+const limpar = s => String(s == null ? '' : s).trim().replace(/\s+/g,' ');
+const idAluno = n => 'p::' + chave(n);
+const idSala = s => 's::' + chave(s);
+const idAresta = (a, b) => 'e::' + a + '>>' + b;
+const VAZIOS = new Set(['','ninguem','ninguém','nenhum','nenhuma','-','--','nao','não','nao sei','não sei','nao lembro','não lembro','nao contei','não contei','n/a','na','ngm','x','?']);
+const EQUIPE = /^(a |o )?(equipe|professor|professora|professores|prof|profa|direcao|diretor|diretora|coordenacao|coordenador|coordenadora|pesquisa|pesquisador|pesquisadora|organizacao|organizadores)\b/;
+const ehVazio = s => VAZIOS.has(chave(s));
+const corSala = s => {
+  if (!s) return '#868e96';
+  const k = chave(s);
+  if (!S.coresSala[k]){ const usadas = Object.keys(S.coresSala).length; S.coresSala[k] = PALETA[usadas % PALETA.length]; }
+  return S.coresSala[k];
+};
+function minutos(h){
+  if (!h) return null;
+  const m = String(h).trim().match(/(\d{1,2})\s*[:hH.]\s*(\d{0,2})/);
+  if (!m) { const m2 = String(h).trim().match(/^(\d{1,2})$/); return m2 ? (+m2[1])*60 : null; }
+  return (+m[1]) * 60 + (+(m[2] || 0));
+}
+const fmtHora = m => m == null ? '' : String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+function normHora(h){ const m = minutos(h); return m == null ? '' : fmtHora(m); }
+
+/* ---------- Armazenamento local ---------- */
+const CHAVE = 'percolacao-escola-v1';
+function salvarLocal(){ try { localStorage.setItem(CHAVE, JSON.stringify(paraJSON())); } catch(e){} }
+function lerLocal(){ try { const t = localStorage.getItem(CHAVE); return t ? JSON.parse(t) : null; } catch(e){ return null; } }
+
+/* ---------- Estilo ---------- */
+function informado(n){ return !!n.data('inf'); }
+function corAluno(n){
+  if (!informado(n)) return S.corNao;
+  if (n.data('cor')) return n.data('cor');
+  switch (S.colorir){
+    case 'sala': return corSala(n.data('sala'));
+    case 'geracao': return mix(S.gerIni, S.gerFim, M.maxGen ? n.data('gen') / M.maxGen : 0);
+    case 'repasses': return mix(S.repIni, S.repFim, n.outdegree(false) / Math.max(1, M.maxOut));
+    default: return S.corUnica;
+  }
+}
+function tamAluno(n){
+  let b = S.tamanho;
+  if (n.removed()) return b;
+  if (S.tamanhoPor === 'repasses') b = b * (0.75 + 1.5 * n.outdegree(false) / Math.max(1, M.maxOut));
+  else if (S.tamanhoPor === 'alcance') b = b * (0.75 + 1.6 * Math.sqrt((n.data('alc')||0) / Math.max(1, M.maxAlc)));
+  if (n.data('semente')) b *= 1.25;
+  return Math.round(b);
+}
+function corAresta(e){
+  if (e.data('cor')) return e.data('cor');
+  if (S.pontes && e.data('ponte')) return S.corPonte;
+  if (S.corArestaModo === 'origem') return corAluno(e.source());
+  return S.corAresta;
+}
+function rotAresta(e){
+  if (S.rotuloAresta === 'meio') return e.data('meio') || '';
+  if (S.rotuloAresta === 'hora') return e.data('hora') || '';
+  return '';
+}
+function montarEstilo(){
+  const agrupado = S.layout === 'salas';
+  return [
+    { selector:'node', style:{ 'font-family':'Atkinson Hyperlegible, system-ui, sans-serif', 'color': S.corTexto, 'transition-property':'opacity', 'transition-duration': 200 } },
+    { selector:'node[tipo="aluno"]', style:{
+      'label': S.rotulos ? 'data(label)' : '', 'font-size': S.fonte, 'font-weight': 700,
+      'text-valign':'bottom', 'text-margin-y': 3, 'text-outline-color': S.fundo, 'text-outline-width': 2.5,
+      'background-color': corAluno, 'width': tamAluno, 'height': tamAluno,
+      'shape': n => n.data('semente') ? S.formaSemente : S.forma,
+      'border-width': n => n.data('semente') ? 4 : (informado(n) ? 1.5 : 1.5),
+      'border-color': n => n.data('semente') ? S.corSemente : (informado(n) ? S.fundo : mix(S.corNao, S.corTexto, .35)),
+      'border-style': n => informado(n) ? 'solid' : 'dashed',
+      'display': n => (!S.mostrarNao && !informado(n)) ? 'none' : 'element'
+    }},
+    { selector:'node[tipo="sala"]', style:{
+      'display': agrupado ? 'element' : 'none',
+      'shape':'round-rectangle', 'label':'data(rotulo)', 'font-size': S.fonte + 2, 'font-weight': 700,
+      'text-valign':'top', 'text-halign':'center', 'text-margin-y': -4,
+      'background-color': n => corSala(n.data('label')), 'background-opacity': n => n.data('alcancada') ? 0.09 : 0.03,
+      'border-width': 2, 'border-color': n => n.data('alcancada') ? corSala(n.data('label')) : mix(S.corNao, S.corTexto, .3),
+      'border-style': n => n.data('alcancada') ? 'solid' : 'dashed',
+      'padding': 14, 'corner-radius': 14, 'width': 90, 'height': 50, 'text-outline-width': 0
+    }},
+    { selector:'node[tipo="sala"]:parent', style:{ 'text-valign':'top' } },
+    { selector:'node[tipo="sala"]:childless', style:{ 'text-valign':'center', 'text-margin-y': 0 } },
+    { selector:'edge', style:{
+      'curve-style': S.curva, 'taxi-direction':'downward', 'control-point-distances':[20], 'control-point-weights':[0.5],
+      'width': S.larguraAresta, 'line-color': corAresta, 'target-arrow-color': corAresta, 'target-arrow-shape':'triangle', 'arrow-scale': S.seta,
+      'line-style': e => (S.tracejar && !(e.data('emissor') && e.data('receptor'))) ? 'dashed' : 'solid',
+      'line-dash-pattern':[6,4], 'opacity': 0.9,
+      'label': rotAresta, 'font-size': Math.max(8, S.fonte - 3), 'color': S.corTexto,
+      'text-background-color': S.fundo, 'text-background-opacity': 1, 'text-background-padding': 2, 'text-rotation':'autorotate',
+      'transition-property':'opacity', 'transition-duration': 200
+    }},
+    { selector:'node[tipo="aluno"]:selected', style:{ 'border-color': S.corTexto, 'border-width': 4, 'border-style':'solid' } },
+    { selector:'edge:selected', style:{ 'overlay-color': S.corTexto, 'overlay-opacity': 0.18, 'overlay-padding': 5, 'opacity': 1 } },
+    { selector:'.apagado', style:{ 'opacity': 0.1 } },
+    { selector:'node[tipo="sala"].apagado', style:{ 'opacity': 0.35 } },
+    { selector:'.oculto', style:{ 'opacity': 0.07 } },
+    { selector:'node[tipo="sala"].oculto', style:{ 'opacity': 0.4 } },
+    { selector:'node.novo', style:{ 'border-color': S.corTexto, 'border-width': 4, 'border-style':'double' } },
+    { selector:'.origem', style:{ 'border-color': S.corTexto, 'border-width': 5, 'border-style':'dashed' } }
+  ];
+}
+
+const cy = cytoscape({ container: $('#cy'), elements: [], style: montarEstilo(), wheelSensitivity: 0.25, minZoom: 0.08, maxZoom: 5, boxSelectionEnabled: true });
+const alunos = () => cy.nodes('[tipo="aluno"]');
+const salas = () => cy.nodes('[tipo="sala"]');
+
+function aplicarEstilo(){
+  cy.style().fromJson(montarEstilo()).update();
+  $('#cy').style.background = S.fundo;
+  desenharLegenda();
+  ['Sala','Geracao','Repasses','Unica'].forEach(k => $('#op'+k).style.display = S.colorir === k.toLowerCase() ? '' : 'none');
+}
+
+/* ---------- Cálculos (gerações, alcance, pontes) ---------- */
+function calcular(){
+  const A = alunos();
+  const gen = new Map();
+  const bfs = raizes => {
+    const fila = [];
+    raizes.forEach(r => { if (!gen.has(r.id())){ gen.set(r.id(), 0); fila.push(r); } });
+    for (let i = 0; i < fila.length; i++){
+      const n = fila[i], g = gen.get(n.id());
+      n.outgoers('node').forEach(m => { if (!gen.has(m.id())){ gen.set(m.id(), g + 1); fila.push(m); } });
+    }
+  };
+  const sementes = A.filter(n => n.data('semente'));
+  bfs(sementes.length ? sementes : A.filter(n => n.indegree(false) === 0 && n.outdegree(false) > 0));
+  // informados sem caminho a partir das sementes: origem desconhecida
+  const inf = n => n.data('semente') || n.degree(false) > 0 || n.data('soube') === true;
+  let resto = A.filter(n => inf(n) && !gen.has(n.id()));
+  while (resto.length){
+    let r = resto.filter(n => n.incomers('node').filter(m => !gen.has(m.id())).length === 0);
+    if (!r.length) r = resto.slice(0,1);
+    bfs(r);
+    resto = resto.filter(n => !gen.has(n.id()));
+  }
+  cy.batch(() => {
+    A.forEach(n => {
+      const i = inf(n);
+      n.data({ inf: i, gen: i ? (gen.has(n.id()) ? gen.get(n.id()) : 0) : -1, alc: n.successors('node').length,
+               orfao: i && !n.data('semente') && n.indegree(false) === 0 });
+    });
+    cy.edges().forEach(e => {
+      const a = e.source().data('sala'), b = e.target().data('sala');
+      e.data('ponte', !!(a && b && chave(a) !== chave(b)));
+    });
+    salas().forEach(s => {
+      const k = chave(s.data('label'));
+      const membros = A.filter(n => n.data('sala') && chave(n.data('sala')) === k);
+      const nInf = membros.filter(n => n.data('inf')).length;
+      s.data({ total: membros.length, informados: nInf, alcancada: nInf > 0, rotulo: s.data('label') + '  ·  ' + nInf + '/' + membros.length });
+    });
+  });
+  const inf2 = A.filter(n => n.data('inf'));
+  M.maxGen = Math.max(0, ...inf2.map(n => n.data('gen')));
+  M.maxOut = Math.max(1, ...A.map(n => n.outdegree(false)));
+  M.maxAlc = Math.max(1, ...A.map(n => n.data('alc')));
+}
+
+/* ---------- Modelo ---------- */
+function garantirSala(nome){
+  nome = limpar(nome); if (!nome) return null;
+  const id = idSala(nome);
+  let s = cy.getElementById(id);
+  if (s.empty()){ s = cy.add({ group:'nodes', data:{ id, label: nome.toUpperCase() === nome ? nome : nome, tipo:'sala' }, position: { x: 0, y: 0 } }); corSala(nome); }
+  return s;
+}
+function posNova(){
+  const e = cy.extent();
+  return { x: (e.x1+e.x2)/2 + (Math.random()-.5)*(e.x2-e.x1)*.5, y: (e.y1+e.y2)/2 + (Math.random()-.5)*(e.y2-e.y1)*.5 };
+}
+function garantirAluno(nome, sala, extra){
+  nome = limpar(nome); if (!nome || ehVazio(nome)) return null;
+  const id = idAluno(nome);
+  let n = cy.getElementById(id);
+  sala = limpar(sala);
+  if (n.empty()){
+    const data = { id, label: nome, tipo:'aluno', sala: sala || '' };
+    if (extra){ if (extra.cor) data.cor = extra.cor; if (extra.semente) data.semente = true; if (extra.soube === true || extra.soube === false) data.soube = extra.soube; }
+    const pos = extra && isFinite(extra.x) && isFinite(extra.y) ? { x:+extra.x, y:+extra.y } : posNova();
+    if (sala) garantirSala(sala);
+    n = cy.add({ group:'nodes', data, position: pos });
+  } else if (sala && chave(sala) !== chave(n.data('sala') || '')){
+    garantirSala(sala);
+    n.data('sala', sala);
+  }
+  return n;
+}
+function garantirAresta(a, b, flags){
+  if (!a || !b || a.same(b)) return null;
+  const id = idAresta(a.id(), b.id());
+  let e = cy.getElementById(id);
+  if (e.empty()) e = cy.add({ group:'edges', data:{ id, source: a.id(), target: b.id(), emissor: false, receptor: false } });
+  if (flags){
+    if (flags.emissor) e.data('emissor', true);
+    if (flags.receptor) e.data('receptor', true);
+    if (flags.meio) e.data('meio', flags.meio);
+    if (flags.hora) e.data('hora', normHora(flags.hora));
+    if (flags.cor) e.data('cor', flags.cor);
+  }
+  return e;
+}
+const separarNomes = txt => String(txt || '').split(/\s*(?:[,;|\/+]|\se\s)\s*/).map(limpar).filter(s => s && !ehVazio(s));
+
+function registrarResposta(r){
+  const n = garantirAluno(r.nome, r.sala);
+  if (!n) return null;
+  let deEquipe = r.de && EQUIPE.test(chave(r.de));
+  if (r.semente || deEquipe) n.data('semente', true);
+  const para = Array.isArray(r.para) ? r.para : separarNomes(r.para);
+  const temDe = r.de && !ehVazio(r.de) && !deEquipe;
+  if (r.naoSoube && !temDe && !para.length && !n.data('semente')) n.data('soube', false);
+  else if (r.soube !== false) n.data('soube', true);
+  if (temDe){ const q = garantirAluno(r.de, r.salaDe); garantirAresta(q, n, { receptor: true, meio: r.meio, hora: r.hora }); }
+  else if (n.data('semente') && r.hora && !n.data('horaSemente')) n.data('horaSemente', normHora(r.hora));
+  para.forEach(t => { const tn = garantirAluno(t); garantirAresta(n, tn, { emissor: true }); });
+  return n;
+}
+function renomear(no, novo){
+  novo = limpar(novo); if (!novo) return 'vazio';
+  const novoId = idAluno(novo);
+  if (novoId === no.id()){ no.data('label', novo); return 'ok'; }
+  const outro = cy.getElementById(novoId);
+  if (outro.nonempty()){ juntar(outro, no); return 'juntou'; }
+  const d = Object.assign({}, no.data(), { id: novoId, label: novo }); delete d.parent;
+  const pos = Object.assign({}, no.position());
+  const arestas = no.connectedEdges().map(e => e.data());
+  cy.remove(no);
+  cy.add({ group:'nodes', data: d, position: pos });
+  arestas.forEach(ed => {
+    const s = ed.source === no.id() ? novoId : ed.source, t = ed.target === no.id() ? novoId : ed.target;
+    cy.add({ group:'edges', data: Object.assign({}, ed, { id: idAresta(s, t), source: s, target: t }) });
+  });
+  return 'ok';
+}
+function juntar(manter, remover){
+  if (manter.same(remover)) return;
+  remover.connectedEdges().forEach(e => {
+    const s = e.source().same(remover) ? manter : e.source(), t = e.target().same(remover) ? manter : e.target();
+    if (s.same(t)) return;
+    garantirAresta(s, t, { emissor: e.data('emissor'), receptor: e.data('receptor'), meio: e.data('meio'), hora: e.data('hora'), cor: e.data('cor') });
+  });
+  if (!manter.data('sala') && remover.data('sala')) manter.data('sala', remover.data('sala'));
+  if (remover.data('semente')) manter.data('semente', true);
+  if (remover.data('soube') === true) manter.data('soube', true);
+  cy.remove(remover);
+}
+
+/* ---------- Agrupamento por sala (nós compostos) ---------- */
+function agrupar(){
+  const quer = S.layout === 'salas';
+  alunos().forEach(n => {
+    const s = n.data('sala');
+    let alvo = null;
+    if (quer && s){ garantirSala(s); alvo = idSala(s); }
+    const atual = n.data('parent') || null;
+    if (atual !== alvo) n.move({ parent: alvo });
+  });
+}
+
+/* ---------- Desfazer ---------- */
+const pilha = [];
+function foto(){
+  const ns = cy.nodes().sort((a,b) => (a.data('tipo') === 'sala' ? 0 : 1) - (b.data('tipo') === 'sala' ? 0 : 1));
+  return JSON.stringify(ns.map(n => { const d = Object.assign({}, n.data()); delete d.parent; return { group:'nodes', data: d, position: Object.assign({}, n.position()) }; })
+    .concat(cy.edges().map(e => ({ group:'edges', data: e.data() }))));
+}
+function guardar(){ pilha.push(foto()); if (pilha.length > 60) pilha.shift(); $('#btnDesfazer').disabled = false; }
+function desfazer(){
+  if (!pilha.length){ avisar('Nada para desfazer.'); return; }
+  const els = JSON.parse(pilha.pop());
+  cy.elements().remove(); cy.add(els);
+  $('#btnDesfazer').disabled = !pilha.length;
+  depois(false);
+}
+function mudar(fn, reorganizar){ guardar(); const r = fn(); depois(reorganizar && S.autoLayout); return r; }
+function depois(reorganizar){
+  salas().unselectify();
+  calcular();
+  agrupar();
+  aplicarEstilo();
+  if (reorganizar) layout(true);
+  atualizarListas(); renderAnalise(); renderSelecao(); renderCoresSalas();
+  if (player.ativo) prepararPlayer();
+  $('#vazio').classList.toggle('on', alunos().length === 0 && salas().length === 0);
+  salvarLocal();
+}
+
+/* ---------- Layouts ---------- */
+function posArvore(){
+  const A = alunos().filter(n => S.mostrarNao || informado(n));
+  const linhas = [];
+  A.filter(informado).forEach(n => { const g = n.data('gen'); (linhas[g] = linhas[g] || []).push(n); });
+  const salaOrd = (a,b) => (a.data('sala')||'').localeCompare(b.data('sala')||'', 'pt-BR', {numeric:true}) || a.data('label').localeCompare(b.data('label'),'pt-BR');
+  const pos = {};
+  const dx = Math.max(34, S.espacamento * 0.85), dy = S.espacamento * 1.7;
+  let ant = new Map();
+  for (let g = 0; g < linhas.length; g++){
+    let L = (linhas[g] || []).slice().sort(salaOrd);
+    if (g > 0){
+      const bar = n => { const ps = n.incomers('node').filter(m => ant.has(m.id())).map(m => ant.get(m.id())); return ps.length ? ps.reduce((a,c)=>a+c,0)/ps.length : 1e9; };
+      const b = new Map(L.map(n => [n.id(), bar(n)]));
+      L.sort((x,y) => b.get(x.id()) - b.get(y.id()) || salaOrd(x,y));
+    }
+    ant = new Map(L.map((n,i) => [n.id(), i]));
+    L.forEach((n,i) => pos[n.id()] = { x: (i - (L.length-1)/2) * dx, y: g * dy });
+  }
+  const nao = A.filter(n => !informado(n)).sort(salaOrd);
+  const porLinha = Math.max(8, Math.max(...linhas.map(l => l ? l.length : 0), 1));
+  nao.forEach((n,i) => { const r = Math.floor(i / porLinha), c = i % porLinha, nLinha = Math.min(porLinha, nao.length - r*porLinha);
+    pos[n.id()] = { x: (c - (nLinha-1)/2) * dx, y: (linhas.length + 0.6 + r) * dy }; });
+  return pos;
+}
+function posOndas(){
+  const A = alunos().filter(n => S.mostrarNao || informado(n));
+  const aneis = [];
+  A.filter(informado).forEach(n => { const g = n.data('gen'); (aneis[g] = aneis[g] || []).push(n); });
+  const passo = Math.max(50, S.espacamento * 1.3), esp = Math.max(30, S.espacamento * 0.8);
+  const salaOrd = (a,b) => (a.data('sala')||'').localeCompare(b.data('sala')||'', 'pt-BR', {numeric:true}) || a.data('label').localeCompare(b.data('label'),'pt-BR');
+  const pos = {}, ang = new Map();
+  const TAU = Math.PI * 2;
+  const norm = a => ((a % TAU) + TAU) % TAU;
+  let r = 0;
+  const anel = (L, raio, desejado) => {
+    const k = L.length; if (!k) return;
+    if (k === 1 && raio === 0){ pos[L[0].id()] = { x: 0, y: 0 }; ang.set(L[0].id(), 0); return; }
+    let off = -Math.PI / 2;
+    if (desejado){
+      let sx = 0, sy = 0;
+      L.forEach((n,i) => { const d = desejado.get(n.id()); if (d != null){ const res = d - TAU*i/k; sx += Math.cos(res); sy += Math.sin(res); } });
+      if (sx || sy) off = Math.atan2(sy, sx);
+    }
+    L.forEach((n,i) => { const a = off + TAU*i/k; ang.set(n.id(), a); pos[n.id()] = { x: raio*Math.cos(a), y: raio*Math.sin(a) }; });
+  };
+  for (let g = 0; g < aneis.length; g++){
+    const L = (aneis[g] || []).slice();
+    if (!L.length) continue;
+    let desejado = null;
+    if (g === 0){ L.sort(salaOrd); r = L.length === 1 ? 0 : Math.max(passo * 0.6, L.length * esp / TAU); }
+    else {
+      desejado = new Map(L.map(n => {
+        const ps = n.incomers('node').filter(m => ang.has(m.id())).map(m => ang.get(m.id()));
+        if (!ps.length) return [n.id(), null];
+        return [n.id(), Math.atan2(ps.reduce((a,c)=>a+Math.sin(c),0), ps.reduce((a,c)=>a+Math.cos(c),0))];
+      }));
+      const chaveAng = n => desejado.get(n.id()) == null ? 99 : norm(desejado.get(n.id()));
+      L.sort((x,y) => chaveAng(x) - chaveAng(y) || salaOrd(x,y));
+      r = Math.max(r + passo, L.length * esp / TAU);
+    }
+    anel(L, r, desejado);
+  }
+  const nao = A.filter(n => !informado(n)).sort(salaOrd);
+  if (nao.length) anel(nao, Math.max(r + passo * 1.4, nao.length * esp / TAU), null);
+  return pos;
+}
+let layoutAtual = null;
+function layout(incremental){
+  if (!cy.nodes().length) return;
+  if (layoutAtual) layoutAtual.stop();
+  const vis = cy.elements(':visible');
+  const anima = cy.nodes().length < 400;
+  const c = { animate: anima, animationDuration: 550, fit: true, padding: 50 };
+  const f = S.espacamento / 70;
+  let o;
+  const forca = (comp) => TEM_FCOSE
+    ? Object.assign({ name:'fcose', quality:'default', randomize: !incremental, nodeRepulsion: () => 6500 * f, idealEdgeLength: () => 55 * f, edgeElasticity: () => 0.45, nestingFactor: 0.15,
+        gravity: 0.3, gravityCompound: 1.2, gravityRangeCompound: 1.6, nodeSeparation: 60 * f, tile: true, tilingPaddingVertical: 20 * f, tilingPaddingHorizontal: 20 * f, packComponents: true, numIter: 2500 }, c)
+    : Object.assign({ name:'cose', idealEdgeLength: () => 70 * f, nodeRepulsion: () => 300000 * f, nodeOverlap: 30, gravity: 0.3, componentSpacing: 80, nestingFactor: 1.2, randomize: !incremental, numIter: 1500 }, c, { animate: anima ? 'end' : false });
+  switch (S.layout){
+    case 'salas': o = forca(true); break;
+    case 'forca': o = forca(false); break;
+    case 'arvore': o = Object.assign({ name:'preset', positions: posArvore() }, c); break;
+    case 'concentrico': o = Object.assign({ name:'preset', positions: posOndas() }, c); break;
+    case 'circulo': o = Object.assign({ name:'circle', spacingFactor: f, avoidOverlap: true, sort: (a,b) => (a.data('sala')||'').localeCompare(b.data('sala')||'','pt-BR',{numeric:true}) || a.data('label').localeCompare(b.data('label'),'pt-BR') }, c); break;
+  }
+  const eles = S.layout === 'salas' ? cy.elements().filter(el => el.visible() || el.data('tipo') === 'sala') : vis;
+  layoutAtual = eles.layout(o);
+  layoutAtual.run();
+}
+
+/* ---------- Interação ---------- */
+let origem = null;
+function destacar(no){
+  cy.elements().removeClass('apagado');
+  if (!no || !S.destacar || no.data('tipo') !== 'aluno') return;
+  const caminho = no.predecessors().union(no.successors()).union(no);
+  const manter = caminho.union(caminho.nodes().parents());
+  cy.elements().not(manter).addClass('apagado');
+}
+function modoConectar(on){
+  $('#chkConectar').checked = on;
+  if (!on && origem){ origem.removeClass('origem'); origem = null; }
+  $('#aviso').classList.toggle('on', on);
+  $('#avisoTxt').textContent = origem ? 'Agora toque em quem ouviu de ' + origem.data('label') : 'Modo conectar: toque em quem contou';
+}
+cy.on('tap', 'node[tipo="aluno"]', ev => {
+  const n = ev.target;
+  if ($('#chkConectar').checked){
+    if (!origem){ origem = n; n.addClass('origem'); }
+    else if (origem.same(n)){ n.removeClass('origem'); origem = null; }
+    else { const o = origem; origem.removeClass('origem'); origem = null; mudar(() => garantirAresta(o, n, { emissor: true, receptor: true }), false); }
+    modoConectar(true);
+    return;
+  }
+  destacar(n);
+});
+cy.on('tap', ev => { if (ev.target === cy){ destacar(null); if (origem){ origem.removeClass('origem'); origem = null; modoConectar($('#chkConectar').checked); } } });
+cy.on('dbltap', 'node[tipo="aluno"]', ev => {
+  const n = ev.target;
+  pedirTexto('Renomear aluno', n.data('label')).then(v => {
+    if (v === null || !v.trim() || v.trim() === n.data('label')) return;
+    guardar(); const r = renomear(n, v); if (r === 'juntou') avisar('Já existia um aluno com esse nome: os dois foram juntados.'); depois(false);
+  });
+});
+let tSel = null;
+cy.on('select unselect', () => { clearTimeout(tSel); tSel = setTimeout(renderSelecao, 0); });
+cy.on('dragfree', 'node', () => salvarLocal());
+
+/* ---------- Painel de seleção ---------- */
+const chipAluno = (n, extra) => '<span class="chip link" data-ir="'+esc(n.id())+'"><i style="background:'+corAluno(n)+'"></i>'+esc(n.data('label'))+(extra||'')+'</span>';
+function renderSelecao(){
+  const box = $('#selecao');
+  const sel = cy.$(':selected').filter(el => el.isEdge() || el.data('tipo') === 'aluno');
+  if (!sel.length){ box.classList.remove('on'); return; }
+  box.classList.add('on');
+  const fechar = '<button class="x" data-acao="fechar" aria-label="Fechar">×</button>';
+  let h = '';
+  if (sel.length === 1 && sel.isNode()){
+    const n = sel[0];
+    const de = n.incomers('node'), para = n.outgoers('node');
+    const status = !informado(n) ? 'não soube' : (n.data('semente') ? 'semente (geração 0)' : 'soube na geração ' + n.data('gen') + (n.data('orfao') ? ' · origem desconhecida' : ''));
+    h = '<h3>'+esc(n.data('label'))+fechar+'</h3>'
+      + '<p class="dica" style="margin-top:-4px">'+esc(status)+'</p>'
+      + '<div class="dupla" style="margin-top:8px"><label class="campo"><span>Nome</span><input type="text" id="selNome" value="'+esc(n.data('label'))+'"></label>'
+      + '<label class="campo"><span>Sala</span><input type="text" id="selSala" list="dlSalas" value="'+esc(n.data('sala')||'')+'"></label></div>'
+      + '<div class="linha"><button class="btn peq" data-acao="salvarNo">Salvar nome/sala</button></div>'
+      + '<label class="interruptor"><input type="checkbox" id="selSemente" '+(n.data('semente')?'checked':'')+'> Semente</label>'
+      + (n.degree(false) === 0 && !n.data('semente') ? '<label class="interruptor"><input type="checkbox" id="selSoube" '+(n.data('soube')===true?'checked':'')+'> Soube (mas não sabemos de quem)</label>' : '')
+      + '<div class="linha"><span class="dica" style="margin:0">Cor deste aluno</span><input type="color" id="selCor" value="'+corAluno(n)+'"><button class="btn peq" data-acao="corpadrao">Automática</button></div>'
+      + '<p class="sub">Ouviu de ('+de.length+')</p>' + (de.length ? '<div class="chips">'+de.map(m => chipAluno(m)).join('')+'</div>' : '<p class="dica">—</p>')
+      + '<p class="sub">Contou para ('+para.length+')</p>' + (para.length ? '<div class="chips">'+para.map(m => chipAluno(m)).join('')+'</div>' : '<p class="dica">—</p>')
+      + '<p class="dica">Alcance (cascata): <b>'+(n.data('alc')||0)+'</b> pessoa(s)</p>'
+      + '<div class="linha" style="margin-top:10px"><button class="btn peq perigo" data-acao="excluir">Excluir aluno</button></div>';
+  } else if (sel.length === 1 && sel.isEdge()){
+    const e = sel[0];
+    const conf = e.data('emissor') && e.data('receptor');
+    h = '<h3>Passagem'+fechar+'</h3>'
+      + '<p style="margin:0 0 6px"><b>'+esc(e.source().data('label'))+'</b> → <b>'+esc(e.target().data('label'))+'</b>'+(e.data('ponte')?' <span class="chip">ponte entre salas</span>':'')+'</p>'
+      + '<p class="dica" style="margin:0 0 6px">'+(conf ? '<span class="ok">Confirmada</span> pelos dois lados' : '<span class="meio">Não confirmada</span>')+'</p>'
+      + '<label class="interruptor"><input type="checkbox" id="selEmissor" '+(e.data('emissor')?'checked':'')+'> '+esc(e.source().data('label'))+' disse que contou</label>'
+      + '<label class="interruptor"><input type="checkbox" id="selReceptor" '+(e.data('receptor')?'checked':'')+'> '+esc(e.target().data('label'))+' disse que ouviu</label>'
+      + '<div class="dupla"><label class="campo"><span>Meio</span><select id="selMeio">'+['','Pessoalmente','WhatsApp','Instagram','Outra rede social','Outro'].concat(e.data('meio') && !['Pessoalmente','WhatsApp','Instagram','Outra rede social','Outro'].includes(e.data('meio')) ? [e.data('meio')] : []).map(m => '<option '+(m===(e.data('meio')||'')?'selected':'')+' value="'+esc(m)+'">'+(m||'—')+'</option>').join('')+'</select></label>'
+      + '<label class="campo"><span>Horário</span><input type="time" id="selHora" style="width:100%" value="'+esc(e.data('hora')||'')+'"></label></div>'
+      + '<div class="linha"><span class="dica" style="margin:0">Cor</span><input type="color" id="selCor" value="'+corAresta(e)+'"><button class="btn peq" data-acao="corpadrao">Automática</button></div>'
+      + '<div class="linha" style="margin-top:6px"><button class="btn peq" data-acao="inverter">Inverter sentido</button><button class="btn peq perigo" data-acao="excluir">Excluir</button></div>';
+  } else {
+    const ns = sel.nodes(), es = sel.edges();
+    h = '<h3>'+sel.length+' selecionados'+fechar+'</h3><p class="dica">'+ns.length+' aluno(s) · '+es.length+' passagem(ns)</p>';
+    if (ns.length === 2 && !es.length){
+      h += '<p class="sub">São a mesma pessoa?</p><div class="linha" style="flex-wrap:wrap">'
+        + '<button class="btn peq" data-acao="juntar" data-manter="0">Juntar como “'+esc(ns[0].data('label'))+'”</button>'
+        + '<button class="btn peq" data-acao="juntar" data-manter="1">Juntar como “'+esc(ns[1].data('label'))+'”</button></div>';
+    }
+    if (ns.length) h += '<div class="linha"><input type="text" id="selSala" list="dlSalas" placeholder="Sala"><button class="btn peq" data-acao="salaTodos">Definir sala</button></div>';
+    h += '<div class="linha"><span class="dica" style="margin:0">Pintar</span><input type="color" id="selCor" value="#888888"><button class="btn peq" data-acao="corpadrao">Automática</button></div>'
+      + '<div class="linha" style="margin-top:6px"><button class="btn peq perigo" data-acao="excluir">Excluir seleção</button></div>';
+  }
+  box.innerHTML = h;
+  const cor = $('#selCor');
+  if (cor){
+    cor.addEventListener('pointerdown', () => guardar(), { once: true });
+    cor.addEventListener('input', () => { cy.$(':selected').filter(el => el.isEdge() || el.data('tipo') === 'aluno').forEach(el => el.data('cor', cor.value)); });
+    cor.addEventListener('change', () => { renderAnalise(); salvarLocal(); });
+  }
+  const liga = (id, fn) => { const el = $('#'+id); if (el) el.addEventListener('change', () => mudar(() => fn(el), false)); };
+  liga('selSemente', el => sel.data('semente', el.checked));
+  liga('selSoube', el => sel.data('soube', el.checked ? true : false));
+  liga('selEmissor', el => sel.data('emissor', el.checked));
+  liga('selReceptor', el => sel.data('receptor', el.checked));
+  liga('selMeio', el => sel.data('meio', el.value));
+  liga('selHora', el => sel.data('hora', normHora(el.value)));
+  ['selNome','selSala'].forEach(id => { const el = $('#'+id); if (el) el.addEventListener('keydown', ev => { if (ev.key === 'Enter'){ const b = box.querySelector('[data-acao="salvarNo"],[data-acao="salaTodos"]'); if (b) b.click(); } }); });
+}
+$('#selecao').addEventListener('click', ev => {
+  const ir = ev.target.closest('[data-ir]');
+  if (ir){ const n = cy.getElementById(ir.dataset.ir); cy.elements().unselect(); n.select(); destacar(n); cy.animate({ center:{ eles:n }, duration: 300 }); return; }
+  const b = ev.target.closest('[data-acao]'); if (!b) return;
+  const sel = cy.$(':selected').filter(el => el.isEdge() || el.data('tipo') === 'aluno');
+  switch (b.dataset.acao){
+    case 'fechar': cy.elements().unselect(); destacar(null); break;
+    case 'excluir': excluirSelecao(); break;
+    case 'corpadrao': mudar(() => sel.removeData('cor'), false); break;
+    case 'salvarNo': {
+      const n = sel[0], nome = $('#selNome').value, sala = limpar($('#selSala').value);
+      guardar();
+      if (sala !== (n.data('sala')||'')){ if (sala) garantirSala(sala); n.data('sala', sala); }
+      let r = 'ok';
+      if (limpar(nome) && limpar(nome) !== n.data('label')) r = renomear(n, nome);
+      if (r === 'juntou') avisar('Já existia um aluno com esse nome: os dois foram juntados.');
+      depois(false); break;
+    }
+    case 'salaTodos': { const sala = limpar($('#selSala').value); mudar(() => { if (sala) garantirSala(sala); sel.nodes().data('sala', sala); }, false); break; }
+    case 'inverter': {
+      const e = sel[0];
+      mudar(() => { const d = Object.assign({}, e.data()); cy.remove(e); garantirAresta(cy.getElementById(d.target), cy.getElementById(d.source), { emissor: d.receptor, receptor: d.emissor, meio: d.meio, hora: d.hora, cor: d.cor }); }, false);
+      break;
+    }
+    case 'juntar': {
+      const ns = sel.nodes(); const i = +b.dataset.manter;
+      const manter = ns[i], remover = ns[1-i];
+      const id = manter.id();
+      mudar(() => juntar(manter, remover), false);
+      const n = cy.getElementById(id); n.select();
+      avisar('Alunos juntados.');
+      break;
+    }
+  }
+});
+function excluirSelecao(){
+  const sel = cy.$(':selected').filter(el => el.isEdge() || el.data('tipo') === 'aluno');
+  if (!sel.length){ avisar('Selecione alunos ou passagens para excluir.'); return; }
+  mudar(() => cy.remove(sel), false);
+  destacar(null);
+}
+
+/* ---------- Legenda ---------- */
+function desenharLegenda(){
+  const L = $('#legenda');
+  L.style.display = S.legenda && cy.nodes().length ? '' : 'none';
+  let h = '';
+  if (S.colorir === 'sala'){
+    const ss = salas().map(s => s.data('label')).sort((a,b) => a.localeCompare(b,'pt-BR',{numeric:true}));
+    h += ss.slice(0, 14).map(s => '<div><span class="sw" style="background:'+corSala(s)+'"></span>'+esc(s)+'</div>').join('');
+    if (ss.length > 14) h += '<div class="dica">+ '+(ss.length-14)+' salas</div>';
+  } else if (S.colorir === 'geracao'){
+    h += '<div>Geração</div><div><span>0</span><span class="grad" style="background:linear-gradient(90deg,'+S.gerIni+','+S.gerFim+')"></span><span>'+M.maxGen+'</span></div>';
+  } else if (S.colorir === 'repasses'){
+    h += '<div>Repasses</div><div><span>0</span><span class="grad" style="background:linear-gradient(90deg,'+S.repIni+','+S.repFim+')"></span><span>'+M.maxOut+'</span></div>';
+  } else h += '<div><span class="sw" style="background:'+S.corUnica+'"></span>Aluno que soube</div>';
+  h += '<hr>';
+  h += '<div><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,15 8,11.7 3.5,15 5,9.5 1,6 6,6" fill="none" stroke="'+S.corSemente+'" stroke-width="2"/></svg>Semente</div>';
+  if (S.mostrarNao) h += '<div><span class="sw" style="background:'+S.corNao+';border:1.5px dashed '+mix(S.corNao,S.corTexto,.35)+'"></span>Não soube</div>';
+  h += '<div><svg width="30" height="10"><line x1="1" y1="5" x2="23" y2="5" stroke="'+S.corAresta+'" stroke-width="2"/><polygon points="22,1 29,5 22,9" fill="'+S.corAresta+'"/></svg>contou para</div>';
+  if (S.pontes) h += '<div><svg width="30" height="10"><line x1="1" y1="5" x2="23" y2="5" stroke="'+S.corPonte+'" stroke-width="2"/><polygon points="22,1 29,5 22,9" fill="'+S.corPonte+'"/></svg>entre salas</div>';
+  if (S.tracejar) h += '<div><svg width="30" height="10"><line x1="1" y1="5" x2="23" y2="5" stroke="'+S.corAresta+'" stroke-width="2" stroke-dasharray="4 3"/><polygon points="22,1 29,5 22,9" fill="'+S.corAresta+'"/></svg>não confirmada</div>';
+  L.innerHTML = h;
+}
+
+/* ---------- Análise ---------- */
+function renderAnalise(){
+  const A = alunos(), I = A.filter(n => n.data('inf'));
+  const SS = salas(), alc = SS.filter(s => s.data('alcancada'));
+  const E = cy.edges(), conf = E.filter(e => e.data('emissor') && e.data('receptor')), pontes = E.filter(e => e.data('ponte'));
+  const sem = A.filter(n => n.data('semente'));
+  const pct = (a,b) => b ? Math.round(100*a/b) + '%' : '—';
+  const card = (v, t, tt) => '<div class="num" title="'+esc(tt||'')+'"><b>'+v+'</b><span>'+t+'</span></div>';
+  $('#numeros').innerHTML = card(I.length + '<small style="font-size:13px;color:var(--tinta-2)">/'+A.length+'</small>', 'souberam (' + pct(I.length, A.length) + ')')
+    + card(alc.length + '<small style="font-size:13px;color:var(--tinta-2)">/'+SS.length+'</small>', 'salas alcançadas')
+    + card(sem.length, 'sementes')
+    + card(I.length ? M.maxGen : 0, 'gerações (máx.)', 'Maior número de passos desde uma semente')
+    + card(E.length, 'passagens', 'Arestas: alguém contou para alguém')
+    + card(pct(conf.length, E.length), 'confirmadas', 'Os dois lados relataram a passagem');
+  // salas
+  const linhasS = SS.map(s => {
+    const k = chave(s.data('label'));
+    const membros = A.filter(n => chave(n.data('sala')||'') === k);
+    const inf = membros.filter(n => n.data('inf'));
+    const g = inf.length ? Math.min(...inf.map(n => n.data('gen'))) : null;
+    const fora = E.filter(e => e.data('ponte') && chave(e.target().data('sala')||'') === k).length;
+    return { id: s.id(), label: s.data('label'), tot: membros.length, inf: inf.length, g, fora };
+  }).sort((a,b) => (a.g == null) - (b.g == null) || (a.g - b.g) || a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+  $('#tabSalas tbody').innerHTML = linhasS.length ? linhasS.map(l => '<tr data-sala="'+esc(l.label)+'"><td><span class="chip"><i style="background:'+corSala(l.label)+'"></i>'+esc(l.label)+'</span></td>'
+    + '<td class="n">'+l.inf+'/'+l.tot+'</td><td><div class="barra"><i style="width:'+(l.tot?100*l.inf/l.tot:0)+'%;background:'+corSala(l.label)+'"></i></div></td>'
+    + '<td class="n">'+(l.g == null ? '<span class="dica">não chegou</span>' : 'ger. ' + l.g)+'</td><td class="n">'+l.fora+'</td></tr>').join('')
+    : '<tr><td colspan="5" class="dica">Cadastre as salas na aba Construir.</td></tr>';
+  // top
+  const top = A.filter(n => n.outdegree(false) > 0).map(n => ({ n, out: n.outdegree(false), alc: n.data('alc'), pontes: n.outgoers('edge').filter(e => e.data('ponte')).length }))
+    .sort((a,b) => b.out - a.out || b.alc - a.alc).slice(0, 10);
+  $('#tabTop tbody').innerHTML = top.length ? top.map(t => '<tr data-id="'+esc(t.n.id())+'"><td>'+(t.n.data('semente')?'★ ':'')+esc(t.n.data('label'))+'</td><td>'+esc(t.n.data('sala')||'—')+'</td><td class="n"><b>'+t.out+'</b></td><td class="n">'+t.alc+'</td><td class="n">'+t.pontes+'</td></tr>').join('')
+    : '<tr><td colspan="5" class="dica">Ainda não há passagens.</td></tr>';
+  // sementes
+  $('#tabSementes tbody').innerHTML = sem.length ? sem.map(n => {
+    const casc = n.successors('node');
+    const ss = new Set(casc.map(m => chave(m.data('sala')||'')).filter(Boolean)); if (n.data('sala')) ss.add(chave(n.data('sala')));
+    const prof = casc.length ? Math.max(...casc.map(m => m.data('gen'))) : 0;
+    return '<tr data-id="'+esc(n.id())+'"><td>★ '+esc(n.data('label'))+'</td><td>'+esc(n.data('sala')||'—')+'</td><td class="n"><b>'+casc.length+'</b></td><td class="n">'+ss.size+'</td><td class="n">'+prof+'</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="dica">Marque as sementes (alunos que receberam a notícia da equipe).</td></tr>';
+  // outros
+  const varias = I.filter(n => n.indegree(false) > 1).length;
+  const orf = I.filter(n => n.data('orfao')).length;
+  const meios = {}; E.forEach(e => { const m = e.data('meio') || 'não informado'; meios[m] = (meios[m]||0) + 1; });
+  const horas = E.map(e => minutos(e.data('hora'))).filter(v => v != null);
+  $('#outros').innerHTML = '<h3>Outros indicadores</h3>'
+    + '<p class="dica" style="margin:0 0 4px"><b>'+pontes.length+'</b> passagens entre salas diferentes ('+pct(pontes.length, E.length)+' do total)</p>'
+    + '<p class="dica" style="margin:0 0 4px"><b>'+varias+'</b> aluno(s) ouviram de mais de uma pessoa</p>'
+    + '<p class="dica" style="margin:0 0 4px"><b>'+orf+'</b> aluno(s) souberam, mas não sabemos de quem</p>'
+    + (horas.length ? '<p class="dica" style="margin:0 0 4px">Passagens entre <b>'+fmtHora(Math.min(...horas))+'</b> e <b>'+fmtHora(Math.max(...horas))+'</b></p>' : '')
+    + (E.length ? '<p class="dica" style="margin:6px 0 0">Meios: ' + Object.entries(meios).sort((a,b)=>b[1]-a[1]).map(([m,v]) => '<b>'+esc(m)+'</b> '+v).join(' · ') + '</p>' : '');
+}
+$('#tabTop tbody').addEventListener('click', irPara);
+$('#tabSementes tbody').addEventListener('click', irPara);
+function irPara(ev){
+  const tr = ev.target.closest('tr[data-id]'); if (!tr) return;
+  const n = cy.getElementById(tr.dataset.id);
+  cy.elements().unselect(); n.select(); destacar(n);
+  cy.animate({ center:{ eles: n }, duration: 300 });
+}
+$('#tabSalas tbody').addEventListener('click', ev => {
+  const tr = ev.target.closest('tr[data-sala]'); if (!tr) return;
+  const k = chave(tr.dataset.sala);
+  const membros = alunos().filter(n => chave(n.data('sala')||'') === k);
+  cy.elements().unselect(); destacar(null);
+  if (membros.length){ cy.elements().not(membros.union(membros.connectedEdges()).union(membros.parents())).addClass('apagado'); cy.animate({ fit:{ eles: membros, padding: 80 }, duration: 350 }); }
+});
+function atualizarListas(){
+  const nomes = alunos().map(n => n.data('label')).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  $('#dlAlunos').innerHTML = nomes.map(v => '<option value="'+esc(v)+'">').join('');
+  const ss = salas().map(s => s.data('label')).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+  $('#dlSalas').innerHTML = ss.map(v => '<option value="'+esc(v)+'">').join('');
+  $('#chipsSalas').innerHTML = salas().sort((a,b)=>a.data('label').localeCompare(b.data('label'),'pt-BR',{numeric:true})).map(s =>
+    '<span class="chip"><i style="background:'+corSala(s.data('label'))+'"></i>'+esc(s.data('label'))+' <span class="dica" style="margin:0">'+(s.data('total')||0)+'</span>'
+    + (s.data('total') ? '' : '<button data-rmsala="'+esc(s.id())+'" title="Remover sala vazia">×</button>') + '</span>').join('');
+}
+$('#chipsSalas').addEventListener('click', ev => { const b = ev.target.closest('[data-rmsala]'); if (b) mudar(() => cy.getElementById(b.dataset.rmsala).remove(), false); });
+function renderCoresSalas(){
+  const ss = salas().map(s => s.data('label')).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+  $('#coresSalas').innerHTML = ss.length ? ss.map(s => '<input type="color" data-corsala="'+esc(chave(s))+'" value="'+corSala(s)+'"><span>'+esc(s)+'</span>').join('') : '<span class="dica" style="grid-column:span 2">Nenhuma sala cadastrada.</span>';
+}
+$('#coresSalas').addEventListener('input', ev => { const i = ev.target.closest('[data-corsala]'); if (!i) return; S.coresSala[i.dataset.corsala] = i.value; aplicarEstilo(); });
+$('#coresSalas').addEventListener('change', () => { renderAnalise(); atualizarListas(); salvarLocal(); });
+
+/* ---------- Reprodução da propagação ---------- */
+const player = { ativo: false, passos: [], i: 0, timer: null };
+function prepararPlayer(){
+  const modo = $('#pModo').value;
+  const I = alunos().filter(informado);
+  if (modo === 'hora'){
+    const t = new Map();
+    I.forEach(n => {
+      const hs = n.incomers('edge').map(e => minutos(e.data('hora'))).filter(v => v != null);
+      let v = hs.length ? Math.min(...hs) : (n.data('semente') ? (minutos(n.data('horaSemente')) ?? -1) : null);
+      t.set(n.id(), v);
+    });
+    const tempos = [...new Set([...t.values()].filter(v => v != null))].sort((a,b)=>a-b);
+    player.tempo = t;
+    player.passos = tempos;
+  } else {
+    player.passos = Array.from({ length: M.maxGen + 1 }, (_, i) => i);
+  }
+  $('#pSlider').max = Math.max(0, player.passos.length - 1);
+  player.i = Math.min(player.i, Math.max(0, player.passos.length - 1));
+  $('#pSlider').value = player.i;
+  mostrarPasso();
+}
+function mostrarPasso(){
+  cy.elements().removeClass('oculto novo');
+  const modo = $('#pModo').value;
+  const A = alunos();
+  if (!player.passos.length){ $('#pTxt').textContent = modo === 'hora' ? 'Não há horários registrados.' : 'Sem dados.'; return; }
+  const p = player.passos[player.i];
+  let visiveis;
+  if (modo === 'hora'){
+    const t = player.tempo;
+    const sem = A.filter(n => n.data('semente'));
+    const v = n => { const x = t.get(n.id()); return x == null ? Infinity : x; };
+    visiveis = A.filter(n => informado(n) && (v(n) <= p || (n.data('semente') && v(n) === -1)));
+    A.not(visiveis).addClass('oculto');
+    A.filter(n => informado(n) && v(n) === p).addClass('novo');
+    cy.edges().forEach(e => { const h = minutos(e.data('hora')); const ok = h != null ? h <= p : (visiveis.contains(e.target()) && visiveis.contains(e.source())); if (!ok) e.addClass('oculto'); });
+    $('#pTxt').innerHTML = '<b>' + (p < 0 ? 'Início' : fmtHora(p)) + '</b> · ' + visiveis.length + ' souberam · ' + contarSalas(visiveis) + ' salas';
+  } else {
+    visiveis = A.filter(n => informado(n) && n.data('gen') <= p);
+    A.not(visiveis).addClass('oculto');
+    A.filter(n => informado(n) && n.data('gen') === p).addClass('novo');
+    cy.edges().forEach(e => { if (!(informado(e.source()) && e.source().data('gen') + 1 <= p && e.target().data('gen') <= p)) e.addClass('oculto'); });
+    $('#pTxt').innerHTML = '<b>Geração ' + p + '</b> de ' + M.maxGen + ' · ' + visiveis.length + ' souberam · ' + contarSalas(visiveis) + ' salas';
+  }
+  salas().forEach(s => { const k = chave(s.data('label')); if (!visiveis.some(n => chave(n.data('sala')||'') === k)) s.addClass('oculto'); });
+}
+const contarSalas = col => new Set(col.map(n => chave(n.data('sala')||'')).filter(Boolean)).size + '/' + salas().length;
+function abrirPlayer(){
+  if (!alunos().filter(informado).length){ avisar('Ainda não há ninguém que soube da notícia.'); return; }
+  player.ativo = true; player.i = 0;
+  cy.elements().unselect(); destacar(null);
+  $('#player').classList.add('on');
+  prepararPlayer();
+  tocar(true);
+}
+function tocar(on){
+  clearInterval(player.timer); player.timer = null;
+  $('#pPlay').textContent = on ? '❚❚' : '▶';
+  if (!on) return;
+  if (player.i >= player.passos.length - 1){ player.i = 0; $('#pSlider').value = 0; mostrarPasso(); }
+  player.timer = setInterval(() => {
+    if (player.i >= player.passos.length - 1){ tocar(false); return; }
+    player.i++; $('#pSlider').value = player.i; mostrarPasso();
+  }, $('#pModo').value === 'hora' ? 700 : 1300);
+}
+function fecharPlayer(){ tocar(false); player.ativo = false; $('#player').classList.remove('on'); cy.elements().removeClass('oculto novo'); }
+$('#btnPlay').onclick = () => player.ativo ? fecharPlayer() : abrirPlayer();
+$('#btnPlay2').onclick = abrirPlayer;
+$('#pPlay').onclick = () => tocar(!player.timer);
+$('#pSlider').oninput = () => { tocar(false); player.i = +$('#pSlider').value; mostrarPasso(); };
+$('#pModo').onchange = () => { player.i = 0; prepararPlayer(); };
+$('#pFechar').onclick = fecharPlayer;
+
+/* ---------- Rede de salas ---------- */
+let cyS = null;
+function abrirSalas(){
+  if (!salas().length){ avisar('Cadastre as salas (ou importe alunos com sala) primeiro.'); return; }
+  $('#salasFundo').classList.add('on');
+  requestAnimationFrame(desenharSalas);
+}
+function desenharSalas(){
+  const vazias = $('#sVazias').checked;
+  const SS = salas().filter(s => vazias || s.data('alcancada'));
+  const nos = SS.map(s => ({ data: { id: s.id(), label: s.data('label'), inf: s.data('informados')||0, tot: s.data('total')||0, alc: !!s.data('alcancada'),
+    internas: cy.edges().filter(e => !e.data('ponte') && chave(e.source().data('sala')||'') === chave(s.data('label'))).length } }));
+  const agg = new Map();
+  cy.edges().filter(e => e.data('ponte')).forEach(e => { const k = idSala(e.source().data('sala')) + '|' + idSala(e.target().data('sala')); agg.set(k, (agg.get(k)||0) + 1); });
+  const maxW = Math.max(1, ...agg.values());
+  const ids = new Set(SS.map(s => s.id()));
+  const ars = []; agg.forEach((w, k) => { const [s, t] = k.split('|'); if (ids.has(s) && ids.has(t)) ars.push({ data: { id: 'x' + k, source: s, target: t, w } }); });
+  const maxT = Math.max(1, ...nos.map(n => n.data.tot));
+  if (cyS) cyS.destroy();
+  cyS = cytoscape({
+    container: $('#cySalas'), elements: nos.concat(ars), wheelSensitivity: 0.25,
+    style: [
+      { selector:'node', style:{ 'shape':'round-rectangle', 'width': n => 46 + 50 * Math.sqrt(n.data('tot')/maxT), 'height': n => 46 + 50 * Math.sqrt(n.data('tot')/maxT),
+        'background-color': n => n.data('alc') ? corSala(n.data('label')) : '#f1f3f5', 'background-opacity': n => n.data('alc') ? 0.25 + 0.75 * (n.data('tot') ? n.data('inf')/n.data('tot') : 0) : 1,
+        'border-width': 2, 'border-color': n => n.data('alc') ? corSala(n.data('label')) : '#adb5bd', 'border-style': n => n.data('alc') ? 'solid':'dashed',
+        'label': n => n.data('label') + '\n' + n.data('inf') + '/' + n.data('tot') + (n.data('internas') ? '\n↻ ' + n.data('internas') : ''), 'text-wrap':'wrap',
+        'text-valign':'center', 'font-family':'Atkinson Hyperlegible, sans-serif', 'font-weight':700, 'font-size': 13, 'color':'#1f2328', 'text-outline-color':'#fff', 'text-outline-width': 2 } },
+      { selector:'edge', style:{ 'curve-style':'bezier', 'width': e => 1.5 + 7 * e.data('w') / maxW, 'line-color': S.corPonte, 'target-arrow-color': S.corPonte, 'target-arrow-shape':'triangle', 'opacity': 0.8,
+        'label':'data(w)', 'font-size': 12, 'font-weight':700, 'text-background-color':'#fff', 'text-background-opacity':1, 'text-background-padding':2 } }
+    ],
+    layout: $('#sLayout').value === 'fcose' && TEM_FCOSE ? { name:'fcose', randomize:true, animate:false, idealEdgeLength: () => 150, nodeRepulsion: () => 20000, padding: 40 }
+      : ($('#sLayout').value === 'fcose' ? { name:'cose', animate:false, padding: 40, nodeRepulsion: () => 800000 } : { name:'circle', padding: 40, sort: (a,b) => a.data('label').localeCompare(b.data('label'),'pt-BR',{numeric:true}) })
+  });
+  $('#sInfo').textContent = 'Cada nó é uma sala (souberam/total; ↻ = passagens dentro da própria sala). Setas = passagens de uma sala para outra; o número indica quantas.';
+}
+$('#btnRedeSalas').onclick = abrirSalas;
+$('#sLayout').onchange = desenharSalas; $('#sVazias').onchange = desenharSalas;
+$('#sFechar').onclick = () => { $('#salasFundo').classList.remove('on'); if (cyS){ cyS.destroy(); cyS = null; } };
+$('#sPNG').onclick = async () => { if (cyS) salvarArquivo('rede-de-salas.png', await cyS.png({ output:'blob-promise', full:true, scale:2, bg:'#ffffff' })); };
+
+/* ---------- Importação ---------- */
+function separarLinha(linha, sep){
+  const r = []; let cur = '', q = false;
+  for (let i = 0; i < linha.length; i++){
+    const c = linha[i];
+    if (q){ if (c === '"'){ if (linha[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === sep){ r.push(cur); cur = ''; }
+    else cur += c;
+  }
+  r.push(cur);
+  return r.map(s => s.trim());
+}
+function linhasCSV(texto){
+  // junta linhas quebradas dentro de aspas
+  const brutas = texto.replace(/^﻿/,'').split(/\r?\n/);
+  const out = []; let acc = null;
+  brutas.forEach(l => { if (acc !== null){ acc += ' ' + l; if ((acc.match(/"/g)||[]).length % 2 === 0){ out.push(acc); acc = null; } } else if ((l.match(/"/g)||[]).length % 2 === 1) acc = l; else out.push(l); });
+  if (acc !== null) out.push(acc);
+  return out.filter(l => l.trim() && !l.trim().startsWith('#'));
+}
+function papel(h){
+  const k = chave(h).replace(/[?:]/g,'').trim();
+  if (/sala.?(de|origem)|turma.?(de|origem)/.test(k) && !/quem/.test(k)) return 'salaDe';
+  if (/sala.?(para|destino)|turma.?(para|destino)/.test(k)) return 'salaPara';
+  if (/para quem|contou para|repassou|passou para|contou_para|para_quem|repasse/.test(k)) return 'paraLista';
+  if (/quem (te |lhe |me |voce |vc )?(contou|falou|passou|disse)|de quem|ouviu de|soube (por|de|atraves|com)|recebeu (de|a)|quem_contou|quem_te|contado por/.test(k)) return 'deQuem';
+  if (/^(de|origem|source|emissor|from|quem contou)$/.test(k)) return 'de';
+  if (/^(para|destino|target|receptor|to)$/.test(k)) return 'para';
+  if (/semente|seed/.test(k)) return 'semente';
+  if (/^meio|canal|^como|forma/.test(k)) return 'meio';
+  if (/hora|horario|^quando|que horas|time/.test(k) && !/carimbo|timestamp/.test(k)) return 'hora';
+  if (/ficou sabendo|^soube|sabia|recebeu a (noticia|informacao)/.test(k)) return 'soube';
+  if (/confirm|relatad/.test(k)) return 'conf';
+  if (/sala|turma|classe|serie/.test(k)) return 'sala';
+  if (/nome|aluno|estudante|^name/.test(k)) return 'nome';
+  return null;
+}
+const SIM = v => /^(s|sim|y|yes|1|x|true|verdadeiro)$/.test(chave(v));
+const NAO = v => /^(n|nao|no|0|false|falso)$/.test(chave(v));
+function lerTabela(texto){
+  const linhas = linhasCSV(texto);
+  if (!linhas.length) throw new Error('O conteúdo está vazio.');
+  const l0 = linhas[0];
+  const cont = { '\t': (l0.match(/\t/g)||[]).length, ';': (l0.match(/;/g)||[]).length, ',': (l0.match(/,/g)||[]).length };
+  const sep = cont['\t'] ? '\t' : (cont[';'] > cont[','] ? ';' : ',');
+  const rows = linhas.map(l => separarLinha(l, sep));
+  const papeis = {};
+  rows[0].forEach((h, i) => { const p = papel(h); if (p && !(p in papeis)) papeis[p] = i; });
+  const col = (r, p) => p in papeis ? (r[papeis[p]] || '') : '';
+  const R = { respostas: [], passagens: [], alunos: [], formato: '' };
+  if ('nome' in papeis && ('deQuem' in papeis || 'paraLista' in papeis)){
+    R.formato = 'respostas';
+    rows.slice(1).forEach(r => {
+      const nome = col(r,'nome'); if (!limpar(nome)) return;
+      const soube = col(r,'soube');
+      R.respostas.push({ nome, sala: col(r,'sala'), de: col(r,'deQuem'), para: separarNomes(col(r,'paraLista'), sep),
+        meio: limpar(col(r,'meio')), hora: col(r,'hora'), semente: SIM(col(r,'semente')), naoSoube: NAO(soube), soube: soube ? !NAO(soube) : undefined });
+    });
+    return R;
+  }
+  if (('de' in papeis || 'deQuem' in papeis) && ('para' in papeis || 'paraLista' in papeis)){
+    R.formato = 'passagens';
+    const pde = 'de' in papeis ? 'de' : 'deQuem', ppara = 'para' in papeis ? 'para' : 'paraLista';
+    rows.slice(1).forEach(r => lerPassagem(R, col(r,pde), col(r,ppara), col(r,'salaDe'), col(r,'salaPara'), col(r,'hora'), col(r,'meio'), col(r,'conf')));
+    return R;
+  }
+  if ('nome' in papeis){
+    R.formato = 'lista de alunos';
+    rows.slice(1).forEach(r => { const nome = col(r,'nome'); if (limpar(nome)) R.alunos.push({ nome, sala: col(r,'sala'), semente: SIM(col(r,'semente')), soube: col(r,'soube') ? !NAO(col(r,'soube')) : undefined }); });
+    return R;
+  }
+  // sem cabeçalho reconhecido: de, para, [hora], [meio]
+  if (rows[0].length < 2) throw new Error('Não reconheci as colunas. Use um cabeçalho como "nome,sala,quem_te_contou,para_quem_contou" ou "de,para".');
+  R.formato = 'passagens (sem cabeçalho)';
+  rows.forEach(r => lerPassagem(R, r[0], r[1], '', '', r[2] || '', r[3] || '', ''));
+  return R;
+}
+function lerPassagem(R, de, para, salaDe, salaPara, hora, meio, conf){
+  if (!limpar(de) || !limpar(para)) return;
+  const c = chave(conf || '');
+  const ambos = !c || ['ambos','sim','s','1','confirmada','confirmado','yes','y'].includes(c);
+  const flags = { emissor: ambos || ['emissor','de','nao','n','0'].includes(c), receptor: ambos || ['receptor','para'].includes(c) };
+  if (EQUIPE.test(chave(de))){ R.respostas.push({ nome: para, sala: salaPara, semente: true, hora }); return; }
+  R.passagens.push({ de, para, salaDe, salaPara, hora, meio: limpar(meio), flags });
+}
+function lerJSON(o){
+  if (!o || o.formato !== 'percolacao-escola') throw new Error('JSON não reconhecido (use um arquivo exportado por esta aplicação).');
+  return { formato: 'JSON', json: o };
+}
+function aplicarImport(R, substituir){
+  guardar();
+  if (substituir){ cy.elements().remove(); if (R.json && R.json.aparencia) S = mesclar(PADRAO, R.json.aparencia); }
+  let posicoes = false;
+  cy.batch(() => {
+    if (R.json){
+      const j = R.json;
+      (j.salas || []).forEach(s => garantirSala(s));
+      (j.alunos || []).forEach(a => { garantirAluno(a.nome, a.sala, a); if (isFinite(a.x)) posicoes = true; if (a.horaSemente) cy.getElementById(idAluno(a.nome)).data('horaSemente', a.horaSemente); });
+      (j.passagens || []).forEach(p => garantirAresta(garantirAluno(p.de), garantirAluno(p.para), { emissor: p.emissor !== false, receptor: p.receptor !== false, meio: p.meio, hora: p.hora, cor: p.cor }));
+      if (!substituir && j.aparencia && j.aparencia.coresSala) S.coresSala = Object.assign({}, j.aparencia.coresSala, S.coresSala);
+    }
+    (R.alunos || []).forEach(a => { const n = garantirAluno(a.nome, a.sala); if (n){ if (a.semente) n.data('semente', true); if (a.soube === true) n.data('soube', true); } });
+    (R.respostas || []).forEach(registrarResposta);
+    (R.passagens || []).forEach(p => {
+      const a = garantirAluno(p.de, p.salaDe), b = garantirAluno(p.para, p.salaPara);
+      garantirAresta(a, b, Object.assign({ meio: p.meio, hora: p.hora }, p.flags));
+    });
+  });
+  if (R.json && substituir) sincronizar();
+  depois(false);
+  if (posicoes && substituir && S.layout !== 'salas') cy.fit(undefined, 50); else layout();
+  const n = (R.respostas||[]).length + (R.passagens||[]).length + (R.alunos||[]).length;
+  avisar('Importado (' + R.formato + '): ' + (R.json ? (R.json.alunos||[]).length + ' alunos, ' + (R.json.passagens||[]).length + ' passagens' : n + ' linha(s)') + '. Agora: ' + alunos().length + ' alunos, ' + cy.edges().length + ' passagens.', 5000);
+}
+function importarTexto(texto, nomeArq){
+  try {
+    const t = texto.trim();
+    const R = (/\.json$/i.test(nomeArq || '') || t.startsWith('{')) ? lerJSON(JSON.parse(t)) : lerTabela(t);
+    aplicarImport(R, modoImport === 'substituir');
+  } catch (e) { mensagem('Não consegui importar', '<p>' + esc(e.message || e) + '</p><p class="dica">Confira os formatos aceitos na aba Importar.</p>'); }
+}
+function lerArquivo(f){
+  if (!f) return;
+  if (/\.(xlsx?|ods)$/i.test(f.name)){ mensagem('Planilha não suportada diretamente', '<p>Abra a planilha no Excel, LibreOffice ou Google Planilhas e salve/baixe como <b>CSV</b>. Depois importe o CSV aqui.</p>'); return; }
+  const r = new FileReader();
+  r.onload = () => importarTexto(String(r.result), f.name);
+  r.onerror = () => avisar('Não foi possível ler o arquivo.');
+  r.readAsText(f, 'utf-8');
+}
+const zona = $('#zonaSoltar');
+zona.onclick = () => $('#inArquivo').click();
+zona.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); $('#inArquivo').click(); } };
+$('#inArquivo').onchange = ev => { lerArquivo(ev.target.files[0]); ev.target.value = ''; };
+['dragenter','dragover'].forEach(t => zona.addEventListener(t, ev => { ev.preventDefault(); zona.classList.add('sobre'); }));
+['dragleave','drop'].forEach(t => zona.addEventListener(t, ev => { ev.preventDefault(); zona.classList.remove('sobre'); }));
+zona.addEventListener('drop', ev => lerArquivo(ev.dataTransfer.files[0]));
+const mainEl = document.querySelector('main');
+mainEl.addEventListener('dragover', ev => { if (ev.dataTransfer && Array.from(ev.dataTransfer.types).includes('Files')) ev.preventDefault(); });
+mainEl.addEventListener('drop', ev => { if (ev.dataTransfer && ev.dataTransfer.files.length){ ev.preventDefault(); lerArquivo(ev.dataTransfer.files[0]); } });
+$('#btnImportarTexto').onclick = () => { const t = $('#inTexto').value; if (!t.trim()){ avisar('Cole o conteúdo na caixa de texto.'); return; } importarTexto(t); };
+
+/* ---------- Exportação ---------- */
+const csv = v => { v = v == null ? '' : String(v); return /[",;\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v; };
+const linhaCSV = arr => arr.map(csv).join(',');
+function csvPassagens(){
+  const L = [linhaCSV(['de','sala_de','para','sala_para','hora','meio','relatado_por','entre_salas'])];
+  cy.edges().forEach(e => L.push(linhaCSV([e.source().data('label'), e.source().data('sala'), e.target().data('label'), e.target().data('sala'), e.data('hora'), e.data('meio'),
+    e.data('emissor') && e.data('receptor') ? 'ambos' : (e.data('emissor') ? 'emissor' : (e.data('receptor') ? 'receptor' : '')), e.data('ponte') ? 'sim' : 'nao'])));
+  return L.join('\n') + '\n';
+}
+function csvAlunos(){
+  const L = [linhaCSV(['nome','sala','semente','soube','geracao','ouviu_de','contou_para','n_contou','alcance','pontes'])];
+  alunos().sort((a,b) => (a.data('sala')||'').localeCompare(b.data('sala')||'','pt-BR',{numeric:true}) || a.data('label').localeCompare(b.data('label'),'pt-BR')).forEach(n => L.push(linhaCSV([
+    n.data('label'), n.data('sala'), n.data('semente') ? 'sim' : 'nao', informado(n) ? 'sim' : 'nao', informado(n) ? n.data('gen') : '',
+    n.incomers('node').map(m => m.data('label')).join('; '), n.outgoers('node').map(m => m.data('label')).join('; '), n.outdegree(false), n.data('alc'),
+    n.outgoers('edge').filter(e => e.data('ponte')).length])));
+  return L.join('\n') + '\n';
+}
+function paraJSON(){
+  return {
+    formato: 'percolacao-escola', versao: 1,
+    salas: salas().map(s => s.data('label')),
+    alunos: alunos().map(n => { const p = n.position(); const o = { nome: n.data('label'), sala: n.data('sala') || '', x: Math.round(p.x), y: Math.round(p.y) };
+      if (n.data('semente')) o.semente = true; if (n.data('soube') === true || n.data('soube') === false) o.soube = n.data('soube'); if (n.data('cor')) o.cor = n.data('cor'); if (n.data('horaSemente')) o.horaSemente = n.data('horaSemente'); return o; }),
+    passagens: cy.edges().map(e => { const o = { de: e.source().data('label'), para: e.target().data('label'), emissor: !!e.data('emissor'), receptor: !!e.data('receptor') };
+      if (e.data('meio')) o.meio = e.data('meio'); if (e.data('hora')) o.hora = e.data('hora'); if (e.data('cor')) o.cor = e.data('cor'); return o; }),
+    aparencia: S
+  };
+}
+const downloadsP = (window.claude && typeof window.claude.use === 'function') ? Promise.resolve(window.claude.use('downloads')).catch(() => null) : Promise.resolve(null);
+async function salvarArquivo(nome, dados){
+  const dl = await downloadsP;
+  if (dl){
+    try { await dl.save({ filename: nome, data: dados }); avisar('Arquivo salvo: ' + nome); }
+    catch (e) { if (e && e.code === 'declined') avisar('Download cancelado.'); else if (e && e.code === 'rate_limited') avisar('Aguarde um instante e tente de novo.'); else baixarDireto(nome, dados); }
+    return;
+  }
+  baixarDireto(nome, dados);
+}
+function baixarDireto(nome, dados){
+  try {
+    const blob = dados instanceof Blob ? dados : new Blob([dados], { type: /\.json$/.test(nome) ? 'application/json' : 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch (e) { if (typeof dados === 'string') mostrarTexto('Copie o conteúdo', dados); else avisar('Não foi possível baixar aqui.'); }
+}
+const vazioAviso = () => { if (!alunos().length){ avisar('Ainda não há dados.'); return true; } return false; };
+$('#btnExpPassagens').onclick = () => { if (!vazioAviso()) salvarArquivo('passagens.csv', '﻿' + csvPassagens()); };
+$('#btnExpAlunos').onclick = () => { if (!vazioAviso()) salvarArquivo('alunos-metricas.csv', '﻿' + csvAlunos()); };
+$('#btnExpJSON').onclick = () => { if (!vazioAviso()) salvarArquivo('percolacao-escola.json', JSON.stringify(paraJSON(), null, 2)); };
+$('#btnExpPNG').onclick = async () => {
+  if (vazioAviso()) return;
+  const blob = await cy.png({ output:'blob-promise', full: true, scale: 3, bg: $('#chkPngTransp').checked ? undefined : S.fundo });
+  salvarArquivo('mapa-da-noticia.png', blob);
+};
+const MODELOS = {
+  respostas: ['modelo-respostas.csv', 'nome,sala,soube,quem_te_contou,para_quem_contou,meio,hora\nAna,7A,sim,equipe,Bruno;Carla,Pessoalmente,07:30\nBruno,7A,sim,Ana,Diego,WhatsApp,08:10\nDiego,8B,sim,Bruno,,Pessoalmente,08:40\nElisa,9A,nao,,,,\n'],
+  passagens: ['modelo-passagens.csv', 'de,sala_de,para,sala_para,hora,meio\nAna,7A,Bruno,7A,08:10,WhatsApp\nBruno,7A,Diego,8B,08:40,Pessoalmente\n'],
+  alunos: ['modelo-lista-alunos.csv', 'nome,sala\nAna,7A\nBruno,7A\nDiego,8B\nElisa,9A\n']
+};
+$$('[data-modelo]').forEach(b => b.onclick = () => { const [n, t] = MODELOS[b.dataset.modelo]; salvarArquivo(n, '﻿' + t); });
+
+/* ---------- Controles de aparência ---------- */
+$$('.selForma').forEach(s => s.innerHTML = FORMAS.map(([v,t]) => '<option value="'+v+'">'+t+'</option>').join(''));
+function sincronizar(){
+  $$('[data-bind]').forEach(el => { const v = getPath(S, el.dataset.bind); if (el.type === 'checkbox') el.checked = !!v; else el.value = v; });
+  $$('output[data-out]').forEach(o => o.textContent = getPath(S, o.dataset.out));
+  renderCoresSalas(); aplicarEstilo(); renderAnalise();
+}
+$$('[data-bind]').forEach(el => {
+  const ev = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input';
+  el.addEventListener(ev, () => {
+    const p = el.dataset.bind;
+    let v = el.type === 'checkbox' ? el.checked : el.value;
+    if (el.type === 'range') v = +v;
+    setPath(S, p, v);
+    const o = document.querySelector('output[data-out="'+p+'"]'); if (o) o.textContent = v;
+    if (p === 'layout'){ fecharPlayer(); agrupar(); }
+    aplicarEstilo();
+    if (p === 'mostrarNao' && S.layout !== 'salas') layout();
+    if (el.hasAttribute('data-relayout')){ clearTimeout(el._t); el._t = setTimeout(layout, ev === 'input' ? 200 : 0); }
+    salvarLocal();
+  });
+});
+$('#temas').innerHTML = TEMAS.map((t,i) => '<button class="btn peq tema" data-tema="'+i+'">'+t.cores.map(c => '<i style="background:'+c+';border:1px solid #0002"></i>').join('')+' '+esc(t.nome)+'</button>').join('');
+$('#temas').onclick = ev => {
+  const b = ev.target.closest('[data-tema]'); if (!b) return;
+  const manter = { layout:S.layout, espacamento:S.espacamento, autoLayout:S.autoLayout, mostrarNao:S.mostrarNao, legenda:S.legenda, destacar:S.destacar, coresSala:S.coresSala, tamanhoPor:S.tamanhoPor };
+  S = mesclar(mesclar(PADRAO, manter), TEMAS[+b.dataset.tema].v);
+  sincronizar(); salvarLocal();
+};
+$('#btnRestaurar').onclick = () => { S = mesclar(PADRAO, { layout: S.layout }); S.coresSala = {}; salas().forEach(s => corSala(s.data('label'))); sincronizar(); salvarLocal(); };
+
+/* ---------- Construir ---------- */
+function registrarDoFormulario(){
+  const nome = limpar($('#rNome').value);
+  if (!nome){ avisar('Informe o nome do aluno.'); $('#rNome').focus(); return; }
+  if (ehVazio(nome)){ avisar('Nome inválido.'); return; }
+  const r = { nome, sala: $('#rSala').value, de: $('#rDe').value, para: separarNomes($('#rPara').value), meio: $('#rMeio').value, hora: $('#rHora').value,
+              semente: $('#rSemente').checked, naoSoube: $('#rNao').checked };
+  const novos = [r.nome, r.de].concat(r.para).filter(x => x && !ehVazio(x) && cy.getElementById(idAluno(x)).empty()).length;
+  mudar(() => registrarResposta(r), novos > 0);
+  avisar('Resposta de ' + nome + ' registrada.');
+  limparFormulario(); $('#rNome').focus();
+}
+function limparFormulario(){ ['rNome','rSala','rDe','rPara','rHora'].forEach(id => $('#'+id).value = ''); $('#rMeio').value = ''; $('#rSemente').checked = false; $('#rNao').checked = false; }
+$('#rRegistrar').onclick = registrarDoFormulario;
+$('#rLimpar').onclick = limparFormulario;
+['rNome','rSala','rDe','rPara','rHora'].forEach(id => $('#'+id).addEventListener('keydown', ev => { if (ev.key === 'Enter') registrarDoFormulario(); }));
+$('#rNome').addEventListener('change', () => { const n = cy.getElementById(idAluno($('#rNome').value)); if (n.nonempty() && !$('#rSala').value) $('#rSala').value = n.data('sala') || ''; });
+function ligar(){
+  const a = limpar($('#lDe').value), b = limpar($('#lPara').value);
+  if (!a || !b){ avisar('Informe quem contou e para quem.'); return; }
+  if (chave(a) === chave(b)){ avisar('Escolha duas pessoas diferentes.'); return; }
+  const novos = [a,b].filter(x => cy.getElementById(idAluno(x)).empty()).length;
+  mudar(() => garantirAresta(garantirAluno(a), garantirAluno(b), { emissor: true, receptor: true }), novos > 0);
+  avisar(a + ' → ' + b); $('#lPara').value = ''; $('#lPara').focus();
+}
+$('#lLigar').onclick = ligar;
+$('#lPara').addEventListener('keydown', ev => { if (ev.key === 'Enter') ligar(); });
+$('#btnAddSalas').onclick = () => {
+  const ss = String($('#inSalas').value).split(/[,;\n]/).map(limpar).filter(Boolean);
+  if (!ss.length){ avisar('Digite as salas separadas por vírgula.'); return; }
+  mudar(() => ss.forEach(garantirSala), S.layout === 'salas');
+  $('#inSalas').value = '';
+};
+$('#inSalas').addEventListener('keydown', ev => { if (ev.key === 'Enter') $('#btnAddSalas').click(); });
+$('#segModo').onclick = ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  modoImport = b.dataset.modo;
+  $$('#segModo button').forEach(x => x.setAttribute('aria-pressed', x === b));
+};
+$('#chkConectar').onchange = ev => modoConectar(ev.target.checked);
+$('#avisoSair').onclick = () => modoConectar(false);
+$('#btnDesfazer').onclick = desfazer;
+$('#btnExcluir').onclick = excluirSelecao;
+$('#btnLimpar').onclick = () => { if (!cy.elements().length) return; confirmar('Apagar todos os dados?', 'Alunos, salas e passagens serão removidos. Dá para desfazer com o botão Desfazer.').then(ok => { if (ok){ fecharPlayer(); mudar(() => cy.elements().remove(), false); } }); };
+function carregarExemplo(){
+  const R = { formato:'exemplo', alunos: [], passagens: [], respostas: [] };
+  EX_ALUNOS.trim().split('\n').forEach(l => { const [nome, sala, s] = l.split('|'); R.alunos.push({ nome, sala, semente: s === '1' }); });
+  EX_REPASSES.trim().split('\n').forEach(l => { const [de, para, hora, meio, rel] = l.split('|'); R.passagens.push({ de, para, hora, meio, flags: { emissor: rel !== 'receptor', receptor: rel !== 'emissor' } }); });
+  R.alunos.filter(a => a.semente).forEach(a => R.respostas.push({ nome: a.nome, semente: true, hora: '07:30' }));
+  fecharPlayer();
+  aplicarImport(R, true);
+}
+$('#btnExemplo').onclick = () => { if (cy.elements().length) confirmar('Carregar o exemplo?', 'Os dados atuais serão substituídos (dá para desfazer).').then(ok => ok && carregarExemplo()); else carregarExemplo(); };
+['btnLayout','btnLayout2'].forEach(id => $('#'+id).onclick = () => layout());
+['btnAjustar','btnAjustar2'].forEach(id => $('#'+id).onclick = () => cy.animate({ fit: { padding: 50 }, duration: 300 }));
+$('#btnZoomMais').onclick = () => cy.animate({ zoom: { level: cy.zoom() * 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }, duration: 150 });
+$('#btnZoomMenos').onclick = () => cy.animate({ zoom: { level: cy.zoom() / 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }, duration: 150 });
+$$('.aba').forEach(b => b.onclick = () => {
+  $$('.aba').forEach(x => x.setAttribute('aria-selected', x === b));
+  $$('.painel').forEach(p => p.classList.toggle('ativo', p.id === 'p-' + b.dataset.aba));
+});
+document.addEventListener('keydown', ev => {
+  const tag = (ev.target.tagName || '').toLowerCase();
+  const digitando = tag === 'input' || tag === 'textarea' || tag === 'select' || ev.target.isContentEditable;
+  if ($('#modalFundo').classList.contains('on') || $('#salasFundo').classList.contains('on')){ if (ev.key === 'Escape'){ fecharModal(null); $('#sFechar').click(); } return; }
+  if (digitando) return;
+  if ((ev.key === 'Delete' || ev.key === 'Backspace') && cy.$(':selected').length){ ev.preventDefault(); excluirSelecao(); }
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z'){ ev.preventDefault(); desfazer(); }
+  else if (ev.key === 'Escape'){ modoConectar(false); cy.elements().unselect(); destacar(null); if (player.ativo) fecharPlayer(); }
+  else if (ev.key === ' ' && player.ativo){ ev.preventDefault(); tocar(!player.timer); }
+});
+
+/* ---------- Modais e avisos ---------- */
+let tToast = null;
+function avisar(t, ms){ const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tToast); tToast = setTimeout(() => el.classList.remove('on'), ms || 2600); }
+let resolverModal = null;
+function abrirModal(html){ $('#modal').innerHTML = html; $('#modalFundo').classList.add('on'); return new Promise(r => resolverModal = r); }
+function fecharModal(v){ $('#modalFundo').classList.remove('on'); if (resolverModal){ const r = resolverModal; resolverModal = null; r(v); } }
+$('#modalFundo').addEventListener('click', ev => {
+  if (ev.target === $('#modalFundo')) return fecharModal(null);
+  const b = ev.target.closest('[data-m]'); if (!b) return;
+  if (b.dataset.m === 'ok'){ const i = $('#modal input[type=text]'); fecharModal(i ? i.value : true); }
+  else if (b.dataset.m === 'copiar'){ const ta = $('#modal textarea'); ta.select(); if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(() => avisar('Copiado!'), () => avisar('Texto selecionado: use Ctrl+C.')); }
+  else fecharModal(null);
+});
+function confirmar(titulo, texto){ return abrirModal('<h2>'+esc(titulo)+'</h2><p>'+esc(texto)+'</p><div class="acoes"><button class="btn" data-m="nao">Cancelar</button><button class="btn prim" data-m="ok">Confirmar</button></div>').then(v => v === true); }
+function mensagem(titulo, html){ return abrirModal('<h2>'+esc(titulo)+'</h2>'+html+'<div class="acoes"><button class="btn prim" data-m="nao">Entendi</button></div>'); }
+function pedirTexto(titulo, valor){
+  const p = abrirModal('<h2>'+esc(titulo)+'</h2><input type="text" style="width:100%" value="'+esc(valor)+'"><div class="acoes"><button class="btn" data-m="nao">Cancelar</button><button class="btn prim" data-m="ok">Salvar</button></div>');
+  const i = $('#modal input'); i.focus(); i.select();
+  i.onkeydown = ev => { if (ev.key === 'Enter') fecharModal(i.value); };
+  return p.then(v => typeof v === 'string' ? v : null);
+}
+function mostrarTexto(titulo, texto){ abrirModal('<h2>'+esc(titulo)+'</h2><textarea style="min-height:200px">'+esc(texto)+'</textarea><div class="acoes"><button class="btn" data-m="copiar">Copiar</button><button class="btn prim" data-m="nao">Fechar</button></div>'); }
+$('#btnAjuda').onclick = () => mensagem('Como usar', `
+  <p><b>1. Prepare.</b> Cadastre as salas da escola e, se tiver, importe a lista de alunos (nome, sala). Quem não aparecer em nenhuma passagem fica como “não soube”.</p>
+  <p><b>2. Registre as respostas.</b> Para cada aluno: quem contou para ele e para quem ele contou. Marque as <b>sementes</b> (quem recebeu a notícia da equipe). Também dá para importar um CSV, por exemplo de um Google Formulário.</p>
+  <p><b>3. Explore o mapa.</b> Clique num aluno para ver o caminho até ele e a cascata que ele gerou. Use <b>▶ Propagação</b> para ver a notícia se espalhando por gerações ou por horário.</p>
+  <p><b>4. Analise.</b> A aba <i>Análise</i> mostra quantas salas a notícia alcançou, quem mais repassou, as pontes entre salas e a <b>rede de salas</b>.</p>
+  <p class="dica">Setas tracejadas = só um dos lados relatou a passagem. Nomes duplicados (“João” e “João P.”): selecione os dois e use <i>Juntar</i>. Os dados ficam salvos neste navegador; exporte o JSON para guardar ou compartilhar.</p>`);
+
+/* ---------- Início ---------- */
+const salvo = lerLocal();
+if (salvo && salvo.formato === 'percolacao-escola'){
+  try { S = mesclar(PADRAO, salvo.aparencia || {}); sincronizar(); aplicarImport(lerJSON(salvo), true); pilha.length = 0; $('#toast').classList.remove('on'); }
+  catch (e) { carregarExemplo(); pilha.length = 0; }
+} else { sincronizar(); carregarExemplo(); pilha.length = 0; $('#toast').classList.remove('on'); }
+$('#btnDesfazer').disabled = !pilha.length;
+window.addEventListener('resize', () => cy.resize());
+})();
+</script>
+</body>
+</html>
