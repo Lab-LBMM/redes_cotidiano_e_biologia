@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gosto ou Odeio? · Rede bipartida da turma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.35.0/dist/cytoscape.min.js"></script>
+<style>
+  :root{
+    --papel:#f6f3ec; --papel-2:#efeadf; --tinta:#1f2328; --tinta-2:#5b616b; --linha:#d9d2c3;
+    --acento:#4263eb; --acento-2:#e9edff; --gosta:#1098ad; --odeia:#c2255c;
+    --raio:10px; --sombra:0 1px 2px rgba(31,35,40,.06),0 6px 18px rgba(31,35,40,.08);
+    --fonte:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --titulo:"Bricolage Grotesque",var(--fonte);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--fonte);color:var(--tinta);background:var(--papel);font-size:14px;line-height:1.4}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .app{display:grid;grid-template-rows:auto 1fr;height:100vh}
+  header{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--linha);background:var(--papel)}
+  header h1{font-family:var(--titulo);font-weight:800;font-size:22px;margin:0;letter-spacing:-.02em}
+  header h1 .q{color:var(--gosta)} header h1 .o{color:var(--odeia)}
+  header .sub{color:var(--tinta-2);font-size:13px}
+  header .grow{flex:1}
+  .corpo{display:grid;grid-template-columns:370px 1fr;min-height:0}
+  aside{border-right:1px solid var(--linha);display:flex;flex-direction:column;min-height:0;background:var(--papel)}
+  .abas{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--linha)}
+  .aba{flex:1;border:0;background:none;padding:9px 4px 10px;border-bottom:3px solid transparent;cursor:pointer;color:var(--tinta-2);font-weight:700;font-size:13px}
+  .aba[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--acento)}
+  .painel{display:none;overflow-y:auto;padding:14px 16px 40px;flex:1}
+  .painel.ativo{display:block}
+  fieldset{border:0;margin:0 0 18px;padding:0}
+  legend,.rot{font-family:var(--titulo);font-weight:600;font-size:15px;margin-bottom:8px;padding:0}
+  .dica{color:var(--tinta-2);font-size:12.5px;margin:4px 0 0}
+  .linha{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .linha > input[type=text],.linha > select{flex:1;min-width:0}
+  input[type=text],select,textarea{border:1px solid var(--linha);background:#fff;border-radius:8px;padding:7px 9px}
+  input[type=text]:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-offset:0;border-color:transparent}
+  textarea{width:100%;min-height:110px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+  input[type=color]{width:38px;height:32px;padding:2px;border:1px solid var(--linha);border-radius:8px;background:#fff;cursor:pointer}
+  input[type=range]{flex:1;accent-color:var(--acento)}
+  output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums;color:var(--tinta-2)}
+  .btn{border:1px solid var(--linha);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:700;white-space:nowrap}
+  .btn:hover{background:var(--papel-2)}
+  .btn.prim{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+  .btn.prim:hover{background:#000}
+  .btn.perigo{color:#b42318}
+  .btn.peq{padding:4px 9px;font-size:12.5px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .grade-btn{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .seg{display:inline-flex;border:1px solid var(--linha);border-radius:8px;overflow:hidden;background:#fff}
+  .seg button{border:0;background:none;padding:7px 12px;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:6px}
+  .seg button + button{border-left:1px solid var(--linha)}
+  .seg button[aria-pressed="true"][data-rel="gosta"]{background:var(--gosta);color:#fff}
+  .seg button[aria-pressed="true"][data-rel="odeia"]{background:var(--odeia);color:#fff}
+  .seg button[aria-pressed="true"]:not([data-rel]){background:var(--tinta);color:#fff}
+  .interruptor{display:flex;align-items:center;gap:8px;cursor:pointer;margin:6px 0}
+  .interruptor input{width:16px;height:16px;accent-color:var(--acento)}
+  .cartao{background:#fff;border:1px solid var(--linha);border-radius:var(--raio);padding:12px;margin-bottom:14px}
+  .cartao h3{margin:0 0 8px;font-family:var(--titulo);font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:8px}
+  .props{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+  .props label{color:var(--tinta-2);font-size:13px}
+  .props .val{display:flex;gap:6px;align-items:center}
+  .soltar{border:2px dashed var(--linha);border-radius:var(--raio);padding:18px;text-align:center;color:var(--tinta-2);cursor:pointer;background:#fff;transition:.15s}
+  .soltar.sobre{border-color:var(--acento);background:var(--acento-2);color:var(--tinta)}
+  .soltar strong{color:var(--tinta)}
+  pre.ex{background:var(--papel-2);border-radius:8px;padding:8px 10px;font-size:12px;margin:6px 0 10px;overflow-x:auto}
+  details{margin-bottom:12px} summary{cursor:pointer;font-weight:700}
+  .temas{display:flex;flex-wrap:wrap;gap:6px}
+  .tema{display:flex;align-items:center;gap:6px}
+  .tema i{display:inline-block;width:10px;height:10px;border-radius:50%}
+  .numeros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .num{background:#fff;border:1px solid var(--linha);border-radius:var(--raio);padding:9px 10px}
+  .num b{display:block;font-family:var(--titulo);font-size:22px;font-weight:800;line-height:1.1}
+  .num span{font-size:12px;color:var(--tinta-2)}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid var(--linha);border-radius:var(--raio);overflow:hidden;margin-bottom:14px}
+  th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--papel-2)}
+  th{background:var(--papel-2);font-weight:700;font-size:12px;color:var(--tinta-2);cursor:pointer;user-select:none}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tbody tr{cursor:pointer} tbody tr:hover{background:var(--acento-2)}
+  .barra{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--papel-2);min-width:60px}
+  .barra i{display:block;height:100%}
+  main{position:relative;min-width:0;min-height:0}
+  #cy{position:absolute;inset:0}
+  .flutua{position:absolute;z-index:5}
+  .ferramentas{top:12px;left:12px;display:flex;gap:6px;flex-wrap:wrap}
+  .ferramentas .btn{box-shadow:var(--sombra)}
+  .legenda{top:12px;right:12px;background:rgba(255,255,255,.92);border:1px solid var(--linha);border-radius:var(--raio);padding:9px 12px;box-shadow:var(--sombra);font-size:13px;display:grid;gap:5px;backdrop-filter:blur(4px)}
+  .legenda div{display:flex;align-items:center;gap:8px}
+  .legenda .sw{width:16px;height:16px;display:inline-block}
+  .aviso{top:60px;left:50%;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:8px 14px;border-radius:999px;box-shadow:var(--sombra);font-weight:700;display:none;align-items:center;gap:10px}
+  .aviso.on{display:flex}
+  .aviso button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:999px;padding:3px 10px;cursor:pointer;font-weight:700}
+  .selecao{left:12px;bottom:12px;width:300px;max-height:calc(100% - 80px);overflow-y:auto;background:#fff;border:1px solid var(--linha);border-radius:var(--raio);box-shadow:var(--sombra);padding:12px;display:none}
+  .selecao.on{display:block}
+  .selecao h3{margin:0 0 8px;font-family:var(--titulo);font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .selecao .x{border:0;background:none;cursor:pointer;font-size:18px;color:var(--tinta-2)}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .chip{font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid var(--linha);background:var(--papel)}
+  .chip.gosta{border-color:var(--gosta);color:var(--gosta)} .chip.odeia{border-color:var(--odeia);color:var(--odeia)}
+  .vazio{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;color:var(--tinta-2);text-align:center;padding:30px}
+  .vazio.on{display:flex}
+  .vazio div{max-width:380px} .vazio b{font-family:var(--titulo);font-size:20px;color:var(--tinta);display:block;margin-bottom:6px}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(30px);opacity:0;background:var(--tinta);color:#fff;padding:9px 16px;border-radius:8px;transition:.25s;z-index:50;pointer-events:none;max-width:90vw}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal-fundo{position:fixed;inset:0;background:rgba(20,22,28,.45);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+  .modal-fundo.on{display:flex}
+  .modal{background:var(--papel);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:min(480px,100%);max-height:90vh;overflow:auto;padding:18px}
+  .modal h2{margin:0 0 10px;font-family:var(--titulo);font-size:19px}
+  .modal .acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .modal.grande{width:min(1000px,100%);height:min(720px,90vh);display:flex;flex-direction:column}
+  #cyProj{flex:1;min-height:300px;border:1px solid var(--linha);border-radius:var(--raio);background:#fff;margin-top:10px}
+  .proj-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  kbd{background:#fff;border:1px solid var(--linha);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}
+  @media (max-width: 860px){
+    .app{height:auto;min-height:100vh}
+    .corpo{grid-template-columns:1fr}
+    main{height:65vh;order:-1;border-bottom:1px solid var(--linha)}
+    aside{border-right:0}
+    .painel{overflow:visible}
+    header .sub{display:none}
+    .selecao{width:calc(100% - 24px)}
+    .legenda{font-size:12px;padding:6px 9px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span class="q">Gosto</span> ou <span class="o">odeio</span>?</h1>
+    <span class="sub">Rede bipartida da turma: alunos × disciplinas</span>
+    <span class="grow"></span>
+    <button class="btn peq" id="btnAjuda">Como usar</button>
+  </header>
+  <div class="corpo">
+    <aside>
+      <div class="abas" role="tablist">
+        <button class="aba" role="tab" aria-selected="true" data-aba="construir">Construir</button>
+        <button class="aba" role="tab" aria-selected="false" data-aba="dados">Importar</button>
+        <button class="aba" role="tab" aria-selected="false" data-aba="aparencia">Aparência</button>
+        <button class="aba" role="tab" aria-selected="false" data-aba="analise">Análise</button>
+      </div>
+
+      <!-- CONSTRUIR -->
+      <section class="painel ativo" id="p-construir">
+        <fieldset>
+          <legend>1. Adicionar alunos</legend>
+          <div class="linha">
+            <input type="text" id="inAluno" placeholder="Ex.: Ana, Bruno, Carla">
+            <button class="btn" id="btnAddAluno">Adicionar</button>
+          </div>
+          <p class="dica">Separe vários nomes por vírgula.</p>
+        </fieldset>
+        <fieldset>
+          <legend>2. Adicionar disciplinas</legend>
+          <div class="linha">
+            <input type="text" id="inDisc" placeholder="Ex.: Matemática, Biologia">
+            <button class="btn" id="btnAddDisc">Adicionar</button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>3. Criar relações</legend>
+          <div class="linha"><input type="text" id="inRelAluno" list="dlAlunos" placeholder="Aluno"></div>
+          <div class="linha"><input type="text" id="inRelDisc" list="dlDiscs" placeholder="Disciplina"></div>
+          <div class="linha">
+            <div class="seg" id="segRel">
+              <button data-rel="gosta" aria-pressed="true">♥ gosta</button>
+              <button data-rel="odeia" aria-pressed="false">✕ odeia</button>
+            </div>
+            <span class="grow" style="flex:1"></span>
+            <button class="btn prim" id="btnAddRel">Ligar</button>
+          </div>
+          <p class="dica">Nomes novos viram nós automaticamente. Se a dupla já existe, a relação é atualizada.</p>
+          <label class="interruptor" style="margin-top:12px">
+            <input type="checkbox" id="chkConectar"> <span><b>Modo conectar:</b> toque num aluno e depois numa disciplina (ou vice-versa) na rede</span>
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend>Editar</legend>
+          <div class="grade-btn">
+            <button class="btn" id="btnDesfazer">↶ Desfazer</button>
+            <button class="btn perigo" id="btnExcluir">Excluir seleção</button>
+            <button class="btn" id="btnExemplo">Carregar exemplo</button>
+            <button class="btn perigo" id="btnLimpar">Limpar tudo</button>
+          </div>
+          <p class="dica" style="margin-top:10px">
+            Clique duplo num nó para renomear; clique duplo numa aresta para trocar gosta ↔ odeia.
+            Arraste os nós para reposicionar. <kbd>Shift</kbd>+arrastar seleciona vários. <kbd>Del</kbd> exclui, <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz.
+          </p>
+        </fieldset>
+      </section>
+
+      <!-- DADOS -->
+      <section class="painel" id="p-dados">
+        <fieldset>
+          <legend>Importar arquivo</legend>
+          <div class="soltar" id="zonaSoltar" tabindex="0">
+            <strong>Arraste um arquivo aqui</strong><br>ou clique para escolher<br>
+            <span class="dica">.csv, .tsv, .txt ou .json</span>
+          </div>
+          <input type="file" id="inArquivo" accept=".csv,.tsv,.txt,.json,text/csv,application/json" hidden>
+          <div class="linha" style="margin-top:10px">
+            <div class="seg" id="segModo">
+              <button data-modo="substituir" aria-pressed="true">Substituir rede</button>
+              <button data-modo="acrescentar" aria-pressed="false">Acrescentar</button>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>…ou colar o texto</legend>
+          <textarea id="inTexto" placeholder="aluno,disciplina,relacao&#10;Ana,Matemática,gosta&#10;Ana,História,odeia"></textarea>
+          <div class="linha" style="justify-content:flex-end;margin-top:6px">
+            <button class="btn prim" id="btnImportarTexto">Importar texto</button>
+          </div>
+        </fieldset>
+        <details open>
+          <summary>Formatos aceitos</summary>
+          <p class="dica"><b>Lista de relações</b> (uma linha por par). Separador: vírgula, ponto e vírgula ou tabulação.</p>
+          <pre class="ex">aluno;disciplina;relacao
+Ana;Matemática;gosta
+Ana;História;odeia
+Bruno;Matemática;odeia</pre>
+          <p class="dica"><b>Matriz</b> (alunos nas linhas, disciplinas nas colunas). Use <b>1</b>/gosta, <b>-1</b>/odeia e <b>0</b> ou vazio para nenhuma relação.</p>
+          <pre class="ex">aluno,Matemática,História,Artes
+Ana,1,-1,
+Bruno,-1,0,1</pre>
+          <p class="dica">Também valem <i>gosto/odeio, like/hate, +/−, sim/não</i>. Linhas começando com # são ignoradas. Planilhas do Excel/Sheets: salve como CSV.
+          O <b>JSON</b> exportado aqui guarda a rede, as posições e a aparência.</p>
+        </details>
+        <fieldset>
+          <legend>Exportar</legend>
+          <div class="grade-btn">
+            <button class="btn" id="btnExpCSV">Baixar CSV</button>
+            <button class="btn" id="btnExpJSON">Baixar JSON</button>
+            <button class="btn" id="btnExpPNG">Baixar imagem PNG</button>
+            <button class="btn" id="btnCopiarCSV">Copiar CSV</button>
+          </div>
+          <label class="interruptor"><input type="checkbox" id="chkPngTransp"> PNG com fundo transparente</label>
+          <button class="btn peq" id="btnModelo" style="margin-top:4px">Baixar modelo de planilha (CSV)</button>
+        </fieldset>
+      </section>
+
+      <!-- APARÊNCIA -->
+      <section class="painel" id="p-aparencia">
+        <div class="cartao">
+          <h3>Layout</h3>
+          <div class="props">
+            <label for="selLayout">Tipo</label>
+            <select id="selLayout" data-bind="layout" data-relayout>
+              <option value="bipartido">Bipartido (duas colunas)</option>
+              <option value="circulo">Círculo (duas metades)</option>
+              <option value="concentrico">Concêntrico (dois anéis)</option>
+              <option value="cose">Força (orgânico)</option>
+              <option value="arvore">Hierárquico</option>
+              <option value="grade">Grade</option>
+              <option value="aleatorio">Aleatório</option>
+            </select>
+            <label class="soBip">Orientação</label>
+            <select class="soBip" data-bind="orientacao" data-relayout>
+              <option value="vertical">Colunas (esq. × dir.)</option>
+              <option value="horizontal">Linhas (cima × baixo)</option>
+            </select>
+            <label class="soBip">Ordem</label>
+            <select class="soBip" data-bind="ordem" data-relayout>
+              <option value="baricentro">Menos cruzamentos</option>
+              <option value="alfabetica">Alfabética</option>
+              <option value="grau">Mais conexões primeiro</option>
+            </select>
+            <label>Espaçamento</label>
+            <div class="val"><input type="range" min="30" max="200" step="5" data-bind="espacamento" data-relayout><output data-out="espacamento"></output></div>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="autoLayout"> Reorganizar ao adicionar nós</label>
+          <div class="linha" style="margin-top:6px">
+            <button class="btn prim" id="btnLayout">Reorganizar</button>
+            <button class="btn" id="btnAjustar2">Ajustar à tela</button>
+          </div>
+        </div>
+
+        <div class="cartao">
+          <h3>Temas prontos</h3>
+          <div class="temas" id="temas"></div>
+        </div>
+
+        <div class="cartao">
+          <h3>Nós: alunos</h3>
+          <div class="props">
+            <label>Cor</label><div class="val"><input type="color" data-bind="aluno.cor"></div>
+            <label>Forma</label><select data-bind="aluno.forma" class="selForma"></select>
+            <label>Tamanho</label><div class="val"><input type="range" min="12" max="100" data-bind="aluno.tamanho"><output data-out="aluno.tamanho"></output></div>
+          </div>
+        </div>
+        <div class="cartao">
+          <h3>Nós: disciplinas</h3>
+          <div class="props">
+            <label>Cor</label><div class="val"><input type="color" data-bind="disciplina.cor"></div>
+            <label>Forma</label><select data-bind="disciplina.forma" class="selForma"></select>
+            <label>Tamanho</label><div class="val"><input type="range" min="12" max="100" data-bind="disciplina.tamanho"><output data-out="disciplina.tamanho"></output></div>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="tamanhoPorGrau"> Tamanho proporcional ao nº de conexões (grau)</label>
+        </div>
+        <div class="cartao">
+          <h3>Arestas: ♥ gosta</h3>
+          <div class="props">
+            <label>Cor</label><div class="val"><input type="color" data-bind="gosta.cor"></div>
+            <label>Traço</label><select data-bind="gosta.estilo" class="selTraco"></select>
+            <label>Espessura</label><div class="val"><input type="range" min="1" max="12" step="0.5" data-bind="gosta.largura"><output data-out="gosta.largura"></output></div>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="gosta.visivel"> Mostrar</label>
+        </div>
+        <div class="cartao">
+          <h3>Arestas: ✕ odeia</h3>
+          <div class="props">
+            <label>Cor</label><div class="val"><input type="color" data-bind="odeia.cor"></div>
+            <label>Traço</label><select data-bind="odeia.estilo" class="selTraco"></select>
+            <label>Espessura</label><div class="val"><input type="range" min="1" max="12" step="0.5" data-bind="odeia.largura"><output data-out="odeia.largura"></output></div>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="odeia.visivel"> Mostrar</label>
+        </div>
+        <div class="cartao">
+          <h3>Arestas: geral</h3>
+          <div class="props">
+            <label>Curva</label>
+            <select data-bind="curva">
+              <option value="straight">Reta</option>
+              <option value="bezier">Curva</option>
+              <option value="unbundled-bezier">Ondulada</option>
+              <option value="taxi">Em degraus</option>
+            </select>
+            <label>Opacidade</label><div class="val"><input type="range" min="0.1" max="1" step="0.05" data-bind="opacidade"><output data-out="opacidade"></output></div>
+            <label>Rótulo</label>
+            <select data-bind="rotuloAresta">
+              <option value="nenhum">Nenhum</option>
+              <option value="texto">gosta / odeia</option>
+              <option value="simbolo">♥ / ✕</option>
+            </select>
+          </div>
+        </div>
+        <div class="cartao">
+          <h3>Rótulos e fundo</h3>
+          <div class="props">
+            <label>Mostrar nomes</label><div class="val"><input type="checkbox" data-bind="rotulos"></div>
+            <label>Posição</label>
+            <select data-bind="rotuloPos">
+              <option value="abaixo">Abaixo do nó</option>
+              <option value="acima">Acima do nó</option>
+              <option value="centro">Dentro do nó</option>
+              <option value="fora">Para fora (bipartido)</option>
+            </select>
+            <label>Fonte</label><div class="val"><input type="range" min="8" max="28" data-bind="fonte"><output data-out="fonte"></output></div>
+            <label>Cor do texto</label><div class="val"><input type="color" data-bind="corTexto"></div>
+            <label>Fundo</label><div class="val"><input type="color" data-bind="fundo"></div>
+          </div>
+          <label class="interruptor"><input type="checkbox" data-bind="destacar"> Destacar vizinhos ao clicar num nó</label>
+          <label class="interruptor"><input type="checkbox" data-bind="legenda"> Mostrar legenda</label>
+        </div>
+        <button class="btn" id="btnRestaurar">Restaurar aparência padrão</button>
+      </section>
+
+      <!-- ANÁLISE -->
+      <section class="painel" id="p-analise">
+        <div class="numeros" id="numeros"></div>
+        <p class="rot">Disciplinas</p>
+        <table id="tabDisc"><thead><tr><th data-ord="label">Disciplina</th><th class="n" data-ord="g">♥</th><th class="n" data-ord="o">✕</th><th class="n" data-ord="s">Saldo</th><th></th></tr></thead><tbody></tbody></table>
+        <p class="rot">Alunos</p>
+        <table id="tabAlunos"><thead><tr><th data-ord="label">Aluno</th><th class="n" data-ord="g">♥</th><th class="n" data-ord="o">✕</th><th class="n" data-ord="s">Saldo</th><th></th></tr></thead><tbody></tbody></table>
+        <div class="cartao">
+          <h3>Projeção da rede bipartida</h3>
+          <p class="dica" style="margin-top:0">Transforma a rede de dois tipos de nós numa rede de um tipo só: dois alunos ficam ligados quando têm a mesma opinião sobre uma disciplina (ou duas disciplinas, quando o mesmo aluno tem a mesma opinião sobre ambas).</p>
+          <div class="linha" style="margin-top:8px">
+            <button class="btn" id="btnProjAlunos">Projetar alunos</button>
+            <button class="btn" id="btnProjDisc">Projetar disciplinas</button>
+          </div>
+        </div>
+        <details>
+          <summary>O que estou vendo?</summary>
+          <p class="dica">Numa <b>rede bipartida</b> existem dois conjuntos de nós (alunos e disciplinas) e as arestas só ligam nós de conjuntos diferentes: nunca aluno–aluno nem disciplina–disciplina. As arestas aqui não têm direção e possuem um <b>sinal</b>: gosta (+) ou odeia (−).</p>
+          <p class="dica"><b>Grau</b> é o número de arestas de um nó. <b>Saldo</b> = gosta − odeia. <b>Densidade</b> = arestas existentes ÷ arestas possíveis (alunos × disciplinas).</p>
+        </details>
+      </section>
+    </aside>
+
+    <main>
+      <div id="cy" aria-label="Rede bipartida"></div>
+      <div class="flutua ferramentas">
+        <button class="btn peq" id="btnZoomMais" title="Aproximar">＋</button>
+        <button class="btn peq" id="btnZoomMenos" title="Afastar">－</button>
+        <button class="btn peq" id="btnAjustar" title="Ajustar à tela">Ajustar</button>
+        <button class="btn peq" id="btnLayout2" title="Reorganizar">Reorganizar</button>
+      </div>
+      <div class="flutua legenda" id="legenda"></div>
+      <div class="flutua aviso" id="aviso"><span id="avisoTxt"></span><button id="avisoSair">Sair</button></div>
+      <div class="flutua selecao" id="selecao"></div>
+      <div class="vazio" id="vazio"><div><b>Sua rede está vazia</b>Adicione alunos, disciplinas e relações na aba <i>Construir</i>, importe um arquivo ou carregue o exemplo.</div></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-fundo" id="modalFundo"><div class="modal" id="modal"></div></div>
+<div class="modal-fundo" id="projFundo">
+  <div class="modal grande">
+    <h2 id="projTitulo">Projeção</h2>
+    <div class="proj-ctrl">
+      <label>Ligar quando
+        <select id="projCriterio">
+          <option value="concorda">têm a mesma opinião</option>
+          <option value="discorda">têm opiniões opostas</option>
+          <option value="qualquer">têm qualquer relação em comum</option>
+        </select>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px">Peso mínimo <input type="range" id="projMin" min="1" max="10" value="1"><output id="projMinOut">1</output></label>
+      <span style="flex:1"></span>
+      <button class="btn" id="projPNG">Baixar PNG</button>
+      <button class="btn prim" id="projFechar">Fechar</button>
+    </div>
+    <p class="dica" id="projInfo"></p>
+    <div id="cyProj"></div>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+
+if (typeof cytoscape === 'undefined') {
+  document.body.innerHTML = '<p style="padding:30px;font-family:sans-serif">Não foi possível carregar a biblioteca Cytoscape.js. Verifique a conexão com a internet e recarregue a página.</p>';
+  return;
+}
+
+/* ---------- Configuração de aparência ---------- */
+const PADRAO = {
+  layout:'bipartido', orientacao:'vertical', ordem:'baricentro', espacamento:70, autoLayout:true,
+  aluno:{cor:'#4263eb', forma:'ellipse', tamanho:38},
+  disciplina:{cor:'#f59f00', forma:'round-rectangle', tamanho:46},
+  gosta:{cor:'#1098ad', estilo:'solid', largura:3, visivel:true},
+  odeia:{cor:'#c2255c', estilo:'dashed', largura:3, visivel:true},
+  curva:'straight', opacidade:0.85, rotuloAresta:'nenhum',
+  rotulos:true, rotuloPos:'fora', fonte:13, corTexto:'#1f2328', fundo:'#fbfaf6',
+  tamanhoPorGrau:false, destacar:true, legenda:true
+};
+const TEMAS = [
+  {nome:'Padrão', cores:['#4263eb','#f59f00','#1098ad','#c2255c'], v:{}},
+  {nome:'Verde × vermelho', cores:['#495057','#fab005','#2f9e44','#e03131'], v:{aluno:{cor:'#495057'},disciplina:{cor:'#fab005'},gosta:{cor:'#2f9e44',estilo:'solid'},odeia:{cor:'#e03131',estilo:'dashed'}}},
+  {nome:'Noite', cores:['#7aa2ff','#ffc857','#4fd1a5','#ff7a59'], v:{aluno:{cor:'#7aa2ff'},disciplina:{cor:'#ffc857'},gosta:{cor:'#4fd1a5'},odeia:{cor:'#ff7a59'},fundo:'#15171d',corTexto:'#e9e6df'}},
+  {nome:'Pastel', cores:['#a5b4fc','#fcd34d','#5eead4','#fda4af'], v:{aluno:{cor:'#a5b4fc'},disciplina:{cor:'#fcd34d'},gosta:{cor:'#5eead4',largura:4},odeia:{cor:'#fda4af',largura:4},fundo:'#fffdf8',corTexto:'#3f3d56'}},
+  {nome:'Impressão P&B', cores:['#222222','#9a9a9a','#111111','#111111'], v:{aluno:{cor:'#222222',forma:'ellipse'},disciplina:{cor:'#9a9a9a',forma:'rectangle'},gosta:{cor:'#111111',estilo:'solid',largura:2.5},odeia:{cor:'#111111',estilo:'dotted',largura:2.5},fundo:'#ffffff',corTexto:'#000000',rotuloAresta:'simbolo'}}
+];
+const FORMAS = [['ellipse','Círculo'],['round-rectangle','Quadrado arredondado'],['rectangle','Quadrado'],['triangle','Triângulo'],['diamond','Losango'],['pentagon','Pentágono'],['hexagon','Hexágono'],['octagon','Octógono'],['star','Estrela'],['vee','Vê'],['tag','Etiqueta']];
+const TRACOS = [['solid','Contínuo'],['dashed','Tracejado'],['dotted','Pontilhado']];
+
+function mesclar(base, extra){
+  const r = clone(base);
+  (function m(a, b){ for (const k in b){ if (b[k] && typeof b[k]==='object' && !Array.isArray(b[k]) && a[k] && typeof a[k]==='object') m(a[k], b[k]); else if (k in a) a[k] = b[k]; } })(r, extra||{});
+  return r;
+}
+const getPath = (o,p) => p.split('.').reduce((a,k)=>a&&a[k], o);
+const setPath = (o,p,v) => { const ks=p.split('.'); const last=ks.pop(); ks.reduce((a,k)=>a[k],o)[last]=v; };
+
+let S = clone(PADRAO);
+let relAtual = 'gosta';
+let modoImport = 'substituir';
+let maxGrau = 1;
+
+/* ---------- Armazenamento local (conveniência) ---------- */
+const CHAVE = 'rede-bipartida-turma-v1';
+function salvarLocal(){ try{ localStorage.setItem(CHAVE, JSON.stringify(paraJSON())); }catch(e){} }
+function lerLocal(){ try{ const t = localStorage.getItem(CHAVE); return t ? JSON.parse(t) : null; }catch(e){ return null; } }
+
+/* ---------- Estilo Cytoscape ---------- */
+function tamanhoNo(n){
+  const base = (S[n.data('tipo')]||S.aluno).tamanho;
+  if (!S.tamanhoPorGrau) return base;
+  return Math.round(base * (0.55 + 1.1 * n.degree(false) / Math.max(1, maxGrau)));
+}
+function posRotulo(n){
+  if (S.rotuloPos === 'acima') return ['top','center'];
+  if (S.rotuloPos === 'centro') return ['center','center'];
+  if (S.rotuloPos === 'fora' && S.layout === 'bipartido'){
+    const aluno = n.data('tipo') === 'aluno';
+    if (S.orientacao === 'vertical') return ['center', aluno ? 'left' : 'right'];
+    return [aluno ? 'top' : 'bottom', 'center'];
+  }
+  return ['bottom','center'];
+}
+function montarEstilo(){
+  return [
+    { selector:'node', style:{
+      'label': S.rotulos ? 'data(label)' : '',
+      'font-family':'Atkinson Hyperlegible, system-ui, sans-serif',
+      'font-size': S.fonte, 'font-weight': 700,
+      'color': S.corTexto,
+      'text-valign': n => posRotulo(n)[0], 'text-halign': n => posRotulo(n)[1],
+      'text-margin-x': n => { const p = posRotulo(n); return p[1]==='left' ? -6 : (p[1]==='right' ? 6 : 0); },
+      'text-margin-y': n => { const p = posRotulo(n); return p[0]==='top' && p[1]==='center' ? -5 : (p[0]==='bottom' && p[1]==='center' ? 5 : 0); },
+      'text-wrap':'wrap', 'text-max-width': 140,
+      'text-outline-color': S.fundo, 'text-outline-width': S.rotuloPos === 'centro' ? 0 : 2.5,
+      'width': tamanhoNo, 'height': tamanhoNo,
+      'border-width': 2, 'border-color': S.fundo,
+      'transition-property':'opacity', 'transition-duration': 150
+    }},
+    { selector:'node[tipo="aluno"]', style:{ 'background-color': S.aluno.cor, 'shape': S.aluno.forma } },
+    { selector:'node[tipo="disciplina"]', style:{ 'background-color': S.disciplina.cor, 'shape': S.disciplina.forma } },
+    { selector:'node[cor]', style:{ 'background-color':'data(cor)' } },
+    { selector:'edge', style:{
+      'curve-style': S.curva, 'taxi-direction': S.orientacao === 'horizontal' ? 'vertical' : 'horizontal',
+      'control-point-distances': [25], 'control-point-weights':[0.5],
+      'opacity': S.opacidade,
+      'label': S.rotuloAresta === 'texto' ? 'data(rel)' : (S.rotuloAresta === 'simbolo' ? (e => e.data('rel')==='gosta' ? '♥' : '✕') : ''),
+      'font-size': Math.max(8, S.fonte - 2), 'color': S.corTexto,
+      'text-background-color': S.fundo, 'text-background-opacity': 1, 'text-background-padding': 2,
+      'text-rotation': S.rotuloAresta === 'texto' ? 'autorotate' : 'none',
+      'transition-property':'opacity', 'transition-duration': 150
+    }},
+    { selector:'edge[rel="gosta"]', style:{ 'line-color': S.gosta.cor, 'line-style': S.gosta.estilo, 'width': S.gosta.largura, 'display': S.gosta.visivel ? 'element' : 'none' } },
+    { selector:'edge[rel="odeia"]', style:{ 'line-color': S.odeia.cor, 'line-style': S.odeia.estilo, 'width': S.odeia.largura, 'display': S.odeia.visivel ? 'element' : 'none',
+      'line-dash-pattern': [Math.max(4, S.odeia.largura*2.2), Math.max(3, S.odeia.largura*1.4)] } },
+    { selector:'edge[cor]', style:{ 'line-color':'data(cor)' } },
+    { selector:'node:selected', style:{ 'border-color': S.corTexto, 'border-width': 4 } },
+    { selector:'edge:selected', style:{ 'overlay-color': S.corTexto, 'overlay-opacity': 0.18, 'overlay-padding': 5, 'opacity': 1 } },
+    { selector:'.apagado', style:{ 'opacity': 0.1 } },
+    { selector:'.origem', style:{ 'border-color': S.corTexto, 'border-width': 5, 'border-style':'dashed' } }
+  ];
+}
+
+const cy = cytoscape({
+  container: $('#cy'), elements: [], style: montarEstilo(),
+  wheelSensitivity: 0.25, minZoom: 0.1, maxZoom: 5, boxSelectionEnabled: true
+});
+
+function aplicarEstilo(){
+  maxGrau = Math.max(1, ...cy.nodes().map(n => n.degree(false)));
+  cy.style().fromJson(montarEstilo()).update();
+  $('#cy').style.background = S.fundo;
+  desenharLegenda();
+  $$('.soBip').forEach(el => el.style.display = S.layout === 'bipartido' ? '' : 'none');
+}
+
+/* ---------- Modelo: nós e relações ---------- */
+const chave = s => String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ');
+const idNo = (tipo, nome) => (tipo === 'aluno' ? 'a::' : 'd::') + chave(nome);
+const idAresta = (a, d) => 'e::' + a + '||' + d;
+const limpar = s => String(s).trim().replace(/\s+/g,' ');
+
+function posNova(tipo){
+  const ext = cy.extent();
+  const mesmo = cy.nodes('[tipo="'+tipo+'"]');
+  if (mesmo.length && S.layout === 'bipartido'){
+    const bb = mesmo.boundingBox();
+    return S.orientacao === 'vertical' ? {x:(bb.x1+bb.x2)/2, y:bb.y2 + S.espacamento} : {x:bb.x2 + S.espacamento, y:(bb.y1+bb.y2)/2};
+  }
+  const cx = (ext.x1+ext.x2)/2, cyy = (ext.y1+ext.y2)/2, w = (ext.x2-ext.x1);
+  return { x: cx + (tipo==='aluno' ? -w/5 : w/5) + (Math.random()-.5)*40, y: cyy + (Math.random()-.5)*(ext.y2-ext.y1)*0.5 };
+}
+function addNo(tipo, nome, extra){
+  nome = limpar(nome);
+  if (!nome) return null;
+  const id = idNo(tipo, nome);
+  let n = cy.getElementById(id);
+  if (n.nonempty()) return n;
+  const data = Object.assign({ id, label: nome, tipo }, extra && extra.cor ? {cor: extra.cor} : {});
+  return cy.add({ group:'nodes', data, position: extra && isFinite(extra.x) && isFinite(extra.y) ? {x:+extra.x, y:+extra.y} : posNova(tipo) });
+}
+function addRelacao(aluno, disc, rel, extra){
+  const a = addNo('aluno', aluno), d = addNo('disciplina', disc);
+  if (!a || !d) return null;
+  const id = idAresta(a.id(), d.id());
+  const e = cy.getElementById(id);
+  if (e.nonempty()){ if (e.data('rel') === rel) return 'igual'; e.data('rel', rel); return 'alterada'; }
+  const data = { id, source: a.id(), target: d.id(), rel };
+  if (extra && extra.cor) data.cor = extra.cor;
+  cy.add({ group:'edges', data });
+  return 'nova';
+}
+function renomear(no, novo){
+  novo = limpar(novo);
+  if (!novo) return false;
+  const tipo = no.data('tipo');
+  const novoId = idNo(tipo, novo);
+  if (novoId === no.id()){ no.data('label', novo); return true; }
+  if (cy.getElementById(novoId).nonempty()){ avisar('Já existe ' + (tipo==='aluno'?'um aluno':'uma disciplina') + ' com esse nome.'); return false; }
+  const data = Object.assign({}, no.data(), { id: novoId, label: novo });
+  const pos = Object.assign({}, no.position());
+  const arestas = no.connectedEdges().map(e => e.data());
+  cy.remove(no);
+  cy.add({ group:'nodes', data, position: pos });
+  arestas.forEach(ed => {
+    const s = ed.source === no.id() ? novoId : ed.source, t = ed.target === no.id() ? novoId : ed.target;
+    cy.add({ group:'edges', data: Object.assign({}, ed, { id: idAresta(s, t), source: s, target: t }) });
+  });
+  cy.getElementById(novoId).select();
+  return true;
+}
+
+/* ---------- Desfazer ---------- */
+const pilha = [];
+function foto(){ return JSON.stringify(cy.elements().map(el => el.isNode() ? {group:'nodes', data: el.data(), position: el.position()} : {group:'edges', data: el.data()})); }
+function guardar(){ pilha.push(foto()); if (pilha.length > 60) pilha.shift(); $('#btnDesfazer').disabled = false; }
+function desfazer(){
+  if (!pilha.length){ avisar('Nada para desfazer.'); return; }
+  const els = JSON.parse(pilha.pop());
+  cy.elements().remove(); cy.add(els);
+  $('#btnDesfazer').disabled = !pilha.length;
+  depois(false);
+}
+function mudar(fn, reorganizar){
+  guardar();
+  const r = fn();
+  depois(reorganizar && S.autoLayout);
+  return r;
+}
+function depois(reorganizar){
+  aplicarEstilo();
+  if (reorganizar) layout();
+  atualizarListas(); renderAnalise(); renderSelecao();
+  $('#vazio').classList.toggle('on', cy.elements().length === 0);
+  salvarLocal();
+}
+
+/* ---------- Layouts ---------- */
+function baricentro(lista, idx){
+  const atual = new Map(lista.map((n,i)=>[n.id(), i]));
+  const b = new Map(lista.map(n => {
+    const viz = n.neighborhood('node').map(v => idx.get(v.id())).filter(v => v !== undefined);
+    return [n.id(), viz.length ? viz.reduce((a,c)=>a+c,0)/viz.length : atual.get(n.id())];
+  }));
+  return lista.slice().sort((x,y) => b.get(x.id()) - b.get(y.id()) || atual.get(x.id()) - atual.get(y.id()));
+}
+function posicoesBipartido(){
+  let A = cy.nodes('[tipo="aluno"]').toArray(), D = cy.nodes('[tipo="disciplina"]').toArray();
+  const nome = (x,y) => x.data('label').localeCompare(y.data('label'), 'pt-BR');
+  if (S.ordem === 'alfabetica'){ A.sort(nome); D.sort(nome); }
+  else if (S.ordem === 'grau'){ const g = (x,y) => y.degree(false)-x.degree(false) || nome(x,y); A.sort(g); D.sort(g); }
+  else {
+    A.sort(nome); D.sort(nome);
+    for (let i = 0; i < 16; i++){
+      D = baricentro(D, new Map(A.map((n,k)=>[n.id(),k])));
+      A = baricentro(A, new Map(D.map((n,k)=>[n.id(),k])));
+    }
+  }
+  const passo = S.espacamento, dist = Math.max(220, S.espacamento * 5);
+  const pos = {};
+  const col = (lista, lado) => lista.forEach((n, i) => {
+    const off = (i - (lista.length - 1) / 2) * passo;
+    pos[n.id()] = S.orientacao === 'vertical' ? { x: lado * dist/2, y: off } : { x: off * 1.6, y: lado * dist/2 };
+  });
+  col(A, -1); col(D, 1);
+  return pos;
+}
+let layoutAtual = null;
+function layout(){
+  if (!cy.nodes().length) return;
+  if (layoutAtual) layoutAtual.stop();
+  const anima = cy.nodes().length < 400;
+  const c = { animate: anima, animationDuration: 450, fit: true, padding: 60 };
+  const tipoOrd = (a,b) => (a.data('tipo') === b.data('tipo') ? a.data('label').localeCompare(b.data('label'),'pt-BR') : (a.data('tipo') === 'aluno' ? -1 : 1));
+  const f = S.espacamento / 70;
+  let o;
+  switch (S.layout){
+    case 'bipartido': o = Object.assign({ name:'preset', positions: posicoesBipartido() }, c); break;
+    case 'circulo': o = Object.assign({ name:'circle', sort: tipoOrd, spacingFactor: f, avoidOverlap: true }, c); break;
+    case 'concentrico': o = Object.assign({ name:'concentric', concentric: n => n.data('tipo')==='disciplina' ? 2 : 1, levelWidth: () => 1, minNodeSpacing: 45 * f, spacingFactor: f, sort: tipoOrd }, c); break;
+    case 'cose': o = Object.assign({ name:'cose', idealEdgeLength: () => 90 * f, nodeRepulsion: () => 400000 * f, nodeOverlap: 40, gravity: 0.25, componentSpacing: 80, numIter: 1500, randomize: true }, c, { animate: anima ? 'end' : false }); break;
+    case 'arvore': o = Object.assign({ name:'breadthfirst', roots: cy.nodes('[tipo="aluno"]'), spacingFactor: f, directed: false, circle: false }, c); break;
+    case 'grade': o = Object.assign({ name:'grid', sort: tipoOrd, spacingFactor: f, avoidOverlap: true }, c); break;
+    default: o = Object.assign({ name:'random' }, c);
+  }
+  layoutAtual = cy.layout(o);
+  layoutAtual.run();
+}
+
+/* ---------- Interação no grafo ---------- */
+let origem = null;
+function destacar(no){
+  cy.elements().removeClass('apagado');
+  if (!no || !S.destacar) return;
+  cy.elements().not(no.closedNeighborhood()).addClass('apagado');
+}
+function modoConectar(on){
+  $('#chkConectar').checked = on;
+  if (!on && origem){ origem.removeClass('origem'); origem = null; }
+  $('#aviso').classList.toggle('on', on);
+  textoAviso();
+}
+function textoAviso(){
+  const r = relAtual === 'gosta' ? '♥ gosta' : '✕ odeia';
+  $('#avisoTxt').textContent = origem
+    ? 'Agora toque ' + (origem.data('tipo')==='aluno' ? 'numa disciplina' : 'num aluno') + ' (' + r + ')'
+    : 'Modo conectar (' + r + '): toque no primeiro nó';
+}
+cy.on('tap', 'node', ev => {
+  const n = ev.target;
+  if ($('#chkConectar').checked){
+    if (!origem){ origem = n; n.addClass('origem'); }
+    else if (origem.same(n)){ n.removeClass('origem'); origem = null; }
+    else if (origem.data('tipo') === n.data('tipo')){
+      avisar('Na rede bipartida só ligamos aluno ↔ disciplina.');
+      origem.removeClass('origem'); origem = n; n.addClass('origem');
+    } else {
+      const a = origem.data('tipo') === 'aluno' ? origem : n, d = a.same(n) ? origem : n;
+      origem.removeClass('origem'); origem = null;
+      const r = mudar(() => addRelacao(a.data('label'), d.data('label'), relAtual), false);
+      if (r === 'alterada') avisar('Relação atualizada para "' + relAtual + '".');
+    }
+    textoAviso();
+    return;
+  }
+  destacar(n);
+});
+cy.on('tap', ev => { if (ev.target === cy){ destacar(null); if (origem){ origem.removeClass('origem'); origem = null; textoAviso(); } } });
+cy.on('dbltap', 'node', ev => {
+  const n = ev.target;
+  pedirTexto('Renomear ' + (n.data('tipo')==='aluno'?'aluno':'disciplina'), n.data('label')).then(v => {
+    if (v !== null && v.trim() && v.trim() !== n.data('label')){ guardar(); if (renomear(n, v)) depois(false); else pilha.pop(); }
+  });
+});
+cy.on('dbltap', 'edge', ev => {
+  const e = ev.target;
+  mudar(() => e.data('rel', e.data('rel') === 'gosta' ? 'odeia' : 'gosta'), false);
+});
+let tSel = null;
+cy.on('select unselect', () => { clearTimeout(tSel); tSel = setTimeout(renderSelecao, 0); });
+cy.on('dragfree', 'node', () => salvarLocal());
+
+/* ---------- Painel de seleção ---------- */
+function renderSelecao(){
+  const box = $('#selecao');
+  const sel = cy.$(':selected');
+  if (!sel.length){ box.classList.remove('on'); return; }
+  box.classList.add('on');
+  let h = '';
+  if (sel.length === 1 && sel.isNode()){
+    const n = sel[0], tipo = n.data('tipo');
+    const g = n.connectedEdges('[rel="gosta"]'), o = n.connectedEdges('[rel="odeia"]');
+    const chips = n.connectedEdges().map(e => { const v = e.source().same(n) ? e.target() : e.source(); return '<span class="chip '+e.data('rel')+'">'+(e.data('rel')==='gosta'?'♥ ':'✕ ')+esc(v.data('label'))+'</span>'; }).join('');
+    h = '<h3>'+(tipo==='aluno'?'Aluno':'Disciplina')+'<button class="x" data-acao="fechar" aria-label="Fechar">×</button></h3>'
+      + '<div class="linha"><input type="text" id="selNome" value="'+esc(n.data('label'))+'"><button class="btn peq" data-acao="renomear">Renomear</button></div>'
+      + '<div class="linha"><span class="dica" style="margin:0">Cor deste nó</span><input type="color" id="selCor" value="'+(n.data('cor')||S[tipo].cor)+'"><button class="btn peq" data-acao="corpadrao">Cor do grupo</button></div>'
+      + '<p class="dica">Grau '+n.degree(false)+' · ♥ '+g.length+' · ✕ '+o.length+'</p>'
+      + (chips ? '<div class="chips">'+chips+'</div>' : '<p class="dica">Sem relações ainda.</p>')
+      + '<div class="linha" style="margin-top:10px"><button class="btn peq perigo" data-acao="excluir">Excluir nó</button></div>';
+  } else if (sel.length === 1 && sel.isEdge()){
+    const e = sel[0], rel = e.data('rel');
+    h = '<h3>Relação<button class="x" data-acao="fechar" aria-label="Fechar">×</button></h3>'
+      + '<p style="margin:0 0 8px"><b>'+esc(e.source().data('label'))+'</b> — <b>'+esc(e.target().data('label'))+'</b></p>'
+      + '<div class="linha"><div class="seg"><button data-rel="gosta" data-acao="rel" aria-pressed="'+(rel==='gosta')+'">♥ gosta</button><button data-rel="odeia" data-acao="rel" aria-pressed="'+(rel==='odeia')+'">✕ odeia</button></div></div>'
+      + '<div class="linha"><span class="dica" style="margin:0">Cor desta aresta</span><input type="color" id="selCor" value="'+(e.data('cor')||S[rel].cor)+'"><button class="btn peq" data-acao="corpadrao">Cor do tipo</button></div>'
+      + '<div class="linha" style="margin-top:6px"><button class="btn peq perigo" data-acao="excluir">Excluir aresta</button></div>';
+  } else {
+    const nn = sel.nodes().length, ne = sel.edges().length;
+    h = '<h3>'+sel.length+' selecionados<button class="x" data-acao="fechar" aria-label="Fechar">×</button></h3>'
+      + '<p class="dica">'+nn+' nó(s) · '+ne+' aresta(s)</p>'
+      + '<div class="linha"><span class="dica" style="margin:0">Pintar</span><input type="color" id="selCor" value="#888888"><button class="btn peq" data-acao="corpadrao">Cores do grupo</button></div>'
+      + (ne ? '<div class="linha"><span class="dica" style="margin:0">Arestas:</span><div class="seg"><button data-rel="gosta" data-acao="rel" aria-pressed="false">♥ gosta</button><button data-rel="odeia" data-acao="rel" aria-pressed="false">✕ odeia</button></div></div>' : '')
+      + '<div class="linha" style="margin-top:6px"><button class="btn peq perigo" data-acao="excluir">Excluir seleção</button></div>';
+  }
+  box.innerHTML = h;
+  const cor = $('#selCor');
+  if (cor){
+    cor.addEventListener('pointerdown', () => guardar(), { once: true });
+    cor.addEventListener('input', () => { cy.$(':selected').forEach(el => el.data('cor', cor.value)); });
+    cor.addEventListener('change', () => salvarLocal());
+  }
+  const nome = $('#selNome');
+  if (nome) nome.addEventListener('keydown', ev => { if (ev.key === 'Enter') box.querySelector('[data-acao="renomear"]').click(); });
+}
+$('#selecao').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-acao]'); if (!b) return;
+  const sel = cy.$(':selected');
+  switch (b.dataset.acao){
+    case 'fechar': cy.elements().unselect(); destacar(null); break;
+    case 'excluir': excluirSelecao(); break;
+    case 'renomear': { const v = $('#selNome').value; if (v.trim() && v.trim() !== sel[0].data('label')){ guardar(); if (renomear(sel[0], v)) depois(false); else pilha.pop(); } break; }
+    case 'corpadrao': mudar(() => sel.removeData('cor'), false); break;
+    case 'rel': mudar(() => sel.edges().data('rel', b.dataset.rel), false); break;
+  }
+});
+function excluirSelecao(){
+  const sel = cy.$(':selected');
+  if (!sel.length){ avisar('Selecione nós ou arestas para excluir.'); return; }
+  mudar(() => cy.remove(sel), false);
+  destacar(null);
+}
+
+/* ---------- Legenda ---------- */
+const CLIP = {
+  triangle:'polygon(50% 0,100% 100%,0 100%)', diamond:'polygon(50% 0,100% 50%,50% 100%,0 50%)',
+  pentagon:'polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)', hexagon:'polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)',
+  octagon:'polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)',
+  star:'polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)',
+  vee:'polygon(0 0,50% 40%,100% 0,50% 100%)', tag:'polygon(0 0,75% 0,100% 50%,75% 100%,0 100%)'
+};
+function swNo(t){
+  const f = S[t].forma, r = f === 'ellipse' ? '50%' : (f === 'round-rectangle' ? '4px' : '0');
+  return '<span class="sw" style="background:'+S[t].cor+';border-radius:'+r+';'+(CLIP[f] ? 'clip-path:'+CLIP[f] : '')+'"></span>';
+}
+function swAresta(t){
+  const d = S[t].estilo === 'dashed' ? 'stroke-dasharray="6 4"' : (S[t].estilo === 'dotted' ? 'stroke-dasharray="1.5 3.5" stroke-linecap="round"' : '');
+  return '<svg width="34" height="12"><line x1="2" y1="6" x2="32" y2="6" stroke="'+S[t].cor+'" stroke-width="'+Math.min(6,S[t].largura)+'" '+d+'/></svg>';
+}
+function desenharLegenda(){
+  const L = $('#legenda');
+  L.style.display = S.legenda ? '' : 'none';
+  L.innerHTML = '<div>'+swNo('aluno')+' Aluno</div><div>'+swNo('disciplina')+' Disciplina</div>'
+    + '<div style="'+(S.gosta.visivel?'':'opacity:.35')+'">'+swAresta('gosta')+' gosta</div>'
+    + '<div style="'+(S.odeia.visivel?'':'opacity:.35')+'">'+swAresta('odeia')+' odeia</div>';
+}
+
+/* ---------- Análise ---------- */
+const ordem = { tabDisc: {k:'s', d:-1}, tabAlunos: {k:'label', d:1} };
+function estat(tipo){
+  return cy.nodes('[tipo="'+tipo+'"]').map(n => {
+    const g = n.connectedEdges('[rel="gosta"]').length, o = n.connectedEdges('[rel="odeia"]').length;
+    return { id: n.id(), label: n.data('label'), g, o, s: g - o };
+  });
+}
+function tabela(idTab, linhas){
+  const {k, d} = ordem[idTab];
+  linhas.sort((a,b) => k === 'label' ? d * a.label.localeCompare(b.label,'pt-BR') : (d * (a[k] - b[k]) || a.label.localeCompare(b.label,'pt-BR')));
+  const max = Math.max(1, ...linhas.map(l => l.g + l.o));
+  $('#'+idTab+' tbody').innerHTML = linhas.length ? linhas.map(l =>
+    '<tr data-id="'+esc(l.id)+'"><td>'+esc(l.label)+'</td><td class="n">'+l.g+'</td><td class="n">'+l.o+'</td><td class="n"><b>'+(l.s>0?'+':'')+l.s+'</b></td>'
+    + '<td><div class="barra" title="'+l.g+' gosta, '+l.o+' odeia"><i style="width:'+(100*l.g/max)+'%;background:'+S.gosta.cor+'"></i><i style="width:'+(100*l.o/max)+'%;background:'+S.odeia.cor+'"></i></div></td></tr>'
+  ).join('') : '<tr><td colspan="5" class="dica">Nenhum ainda.</td></tr>';
+  $$('#'+idTab+' th[data-ord]').forEach(th => { th.textContent = th.textContent.replace(/ [▲▼]$/,'') + (th.dataset.ord === k ? (d>0?' ▲':' ▼') : ''); });
+}
+function renderAnalise(){
+  const nA = cy.nodes('[tipo="aluno"]').length, nD = cy.nodes('[tipo="disciplina"]').length;
+  const nG = cy.edges('[rel="gosta"]').length, nO = cy.edges('[rel="odeia"]').length;
+  const dens = nA && nD ? ((nG + nO) / (nA * nD)) : 0;
+  const card = (v, t) => '<div class="num"><b>'+v+'</b><span>'+t+'</span></div>';
+  $('#numeros').innerHTML = card(nA,'alunos') + card(nD,'disciplinas') + card((100*dens).toFixed(0)+'%','densidade')
+    + card('<span style="color:'+S.gosta.cor+'">'+nG+'</span>','♥ gosta') + card('<span style="color:'+S.odeia.cor+'">'+nO+'</span>','✕ odeia')
+    + card(nG + nO ? (nG >= nO ? '+' : '') + (nG - nO) : '0','saldo geral');
+  tabela('tabDisc', estat('disciplina'));
+  tabela('tabAlunos', estat('aluno'));
+}
+['tabDisc','tabAlunos'].forEach(id => {
+  $('#'+id+' thead').addEventListener('click', ev => {
+    const th = ev.target.closest('th[data-ord]'); if (!th) return;
+    const o = ordem[id];
+    if (o.k === th.dataset.ord) o.d *= -1; else { o.k = th.dataset.ord; o.d = th.dataset.ord === 'label' ? 1 : -1; }
+    renderAnalise();
+  });
+  $('#'+id+' tbody').addEventListener('click', ev => {
+    const tr = ev.target.closest('tr[data-id]'); if (!tr) return;
+    const n = cy.getElementById(tr.dataset.id);
+    cy.elements().unselect(); n.select(); destacar(n);
+    cy.animate({ center: { eles: n }, duration: 300 });
+  });
+});
+function atualizarListas(){
+  const op = t => cy.nodes('[tipo="'+t+'"]').map(n => n.data('label')).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(v => '<option value="'+esc(v)+'">').join('');
+  let dl = $('#dlAlunos'); if (!dl){ dl = document.createElement('datalist'); dl.id = 'dlAlunos'; document.body.appendChild(dl); }
+  let dd = $('#dlDiscs'); if (!dd){ dd = document.createElement('datalist'); dd.id = 'dlDiscs'; document.body.appendChild(dd); }
+  dl.innerHTML = op('aluno'); dd.innerHTML = op('disciplina');
+}
+
+/* ---------- Projeção ---------- */
+let cyP = null, projTipo = 'aluno';
+function abrirProjecao(tipo){
+  projTipo = tipo;
+  $('#projTitulo').textContent = tipo === 'aluno' ? 'Projeção: rede de alunos' : 'Projeção: rede de disciplinas';
+  $('#projFundo').classList.add('on');
+  requestAnimationFrame(desenharProjecao);
+}
+function desenharProjecao(){
+  const crit = $('#projCriterio').value, min = +$('#projMin').value;
+  $('#projMinOut').textContent = min;
+  const outro = projTipo === 'aluno' ? 'disciplina' : 'aluno';
+  const pesos = new Map(), comuns = new Map();
+  cy.nodes('[tipo="'+outro+'"]').forEach(item => {
+    const es = item.connectedEdges().toArray();
+    for (let i = 0; i < es.length; i++) for (let j = i+1; j < es.length; j++){
+      const ri = es[i].data('rel'), rj = es[j].data('rel');
+      const ok = crit === 'qualquer' || (crit === 'concorda' ? ri === rj : ri !== rj);
+      if (!ok) continue;
+      const u = es[i].source().same(item) ? es[i].target() : es[i].source();
+      const v = es[j].source().same(item) ? es[j].target() : es[j].source();
+      const k = [u.id(), v.id()].sort().join('##');
+      pesos.set(k, (pesos.get(k)||0) + 1);
+      if (!comuns.has(k)) comuns.set(k, []);
+      comuns.get(k).push(item.data('label'));
+    }
+  });
+  const maxP = Math.max(1, ...pesos.values());
+  $('#projMin').max = Math.max(1, maxP);
+  const nos = cy.nodes('[tipo="'+projTipo+'"]').map(n => ({ data: { id: n.id(), label: n.data('label'), cor: n.data('cor') || S[projTipo].cor } }));
+  const ars = [];
+  pesos.forEach((w, k) => { if (w >= min){ const [s,t] = k.split('##'); ars.push({ data: { id: 'p'+k, source: s, target: t, w, comuns: comuns.get(k).join(', ') } }); } });
+  const corA = crit === 'discorda' ? S.odeia.cor : (crit === 'concorda' ? S.gosta.cor : '#868e96');
+  if (cyP) cyP.destroy();
+  cyP = cytoscape({
+    container: $('#cyProj'), elements: nos.concat(ars), wheelSensitivity: 0.25,
+    style: [
+      { selector:'node', style:{ 'background-color':'data(cor)', 'shape': S[projTipo].forma, 'width': S[projTipo].tamanho, 'height': S[projTipo].tamanho, 'label':'data(label)', 'font-family':'Atkinson Hyperlegible, sans-serif', 'font-weight':700, 'font-size': S.fonte, 'color': S.corTexto, 'text-valign':'bottom', 'text-margin-y':4, 'text-outline-color':'#fff', 'text-outline-width':2.5 } },
+      { selector:'edge', style:{ 'line-color': corA, 'width': e => 1 + 7 * e.data('w') / maxP, 'opacity': 0.75, 'curve-style':'straight', 'label':'data(w)', 'font-size': 11, 'text-background-color':'#fff', 'text-background-opacity':1, 'text-background-padding':2 } },
+      { selector:'edge:selected', style:{ 'opacity':1, 'overlay-opacity':0.15, 'overlay-color':'#000' } }
+    ],
+    layout: { name:'cose', animate:false, idealEdgeLength: e => 220 - 120 * e.data('w') / maxP, edgeElasticity: e => 60 + 140 * (1 - e.data('w') / maxP), nodeRepulsion: () => 900000, nodeOverlap: 60, gravity: 0.2, numIter: 2000, padding: 40, randomize: true }
+  });
+  cyP.on('tap', 'edge', ev => { const e = ev.target; $('#projInfo').textContent = e.source().data('label') + ' — ' + e.target().data('label') + ': ' + e.data('w') + ' em comum (' + e.data('comuns') + ')'; });
+  const nomeCrit = { concorda:'mesma opinião', discorda:'opiniões opostas', qualquer:'qualquer relação' }[crit];
+  $('#projInfo').textContent = ars.length + ' ligações. Espessura e número = quantas ' + (projTipo==='aluno'?'disciplinas':'pessoas') + ' em comum (' + nomeCrit + '). Clique numa aresta para ver quais.';
+}
+$('#btnProjAlunos').onclick = () => abrirProjecao('aluno');
+$('#btnProjDisc').onclick = () => abrirProjecao('disciplina');
+$('#projCriterio').onchange = () => { $('#projMin').value = 1; desenharProjecao(); };
+$('#projMin').oninput = desenharProjecao;
+$('#projFechar').onclick = () => { $('#projFundo').classList.remove('on'); if (cyP){ cyP.destroy(); cyP = null; } };
+$('#projPNG').onclick = async () => { if (cyP) salvarArquivo('projecao-' + projTipo + 's.png', await cyP.png({ output:'blob-promise', full:true, scale:2, bg:'#ffffff' })); };
+
+/* ---------- Importação ---------- */
+const GOSTA = new Set(['gosta','gostar','gosto','gostam','like','likes','love','+','+1','1','sim','s','yes','y','positivo','positiva','pos','ama','amo','adoro','adora','curte','curto','♥','❤','👍','g']);
+const ODEIA = new Set(['odeia','odiar','odeio','odeiam','hate','hates','dislike','-','-1','−','−1','–1','nao','n','no','negativo','negativa','neg','detesto','detesta','nao gosta','nao gosto','✕','x','👎','o']);
+const NADA = new Set(['','0','neutro','nenhum','nenhuma','na','n/a','null']);
+function lerRel(v){ const k = chave(v); if (GOSTA.has(k)) return 'gosta'; if (ODEIA.has(k)) return 'odeia'; if (NADA.has(k)) return null; return undefined; }
+function separar(linha, sep){
+  const r = []; let cur = '', q = false;
+  for (let i = 0; i < linha.length; i++){
+    const c = linha[i];
+    if (q){ if (c === '"'){ if (linha[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === sep){ r.push(cur); cur = ''; }
+    else cur += c;
+  }
+  r.push(cur);
+  return r.map(s => s.trim());
+}
+function lerTabela(texto){
+  const linhas = texto.replace(/^﻿/,'').split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#'));
+  if (!linhas.length) throw new Error('O texto está vazio.');
+  const l0 = linhas[0];
+  const cont = { '\t': (l0.match(/\t/g)||[]).length, ';': (l0.match(/;/g)||[]).length, ',': (l0.match(/,/g)||[]).length };
+  const sep = cont['\t'] ? '\t' : (cont[';'] >= cont[','] && cont[';'] ? ';' : ',');
+  const rows = linhas.map(l => separar(l, sep));
+  const h = rows[0].map(chave);
+  const R = { alunos: [], disciplinas: [], relacoes: [], ignoradas: 0, formato: '' };
+  const reA = /^(aluno|alunos|aluna|estudante|estudantes|nome|student|students|pessoa|source|origem)/;
+  const reD = /^(disciplina|disciplinas|materia|materias|subject|subjects|curso|target|destino)/;
+  const reR = /^(relac|rel$|tipo|sentimento|opiniao|afeto|type|relation|interacao|gosta|valor|sinal)/;
+  const ia = h.findIndex(x => reA.test(x)), id = h.findIndex(x => reD.test(x));
+  if (ia >= 0 && id >= 0 && ia !== id){
+    const ir = h.findIndex(x => reR.test(x));
+    R.formato = 'lista de relações';
+    rows.slice(1).forEach(r => linhaLista(R, r[ia], r[id], ir >= 0 ? r[ir] : 'gosta'));
+    return R;
+  }
+  const corpo = rows.slice(1);
+  const ehMatriz = rows[0].length >= 2 && corpo.length && corpo.every(r => r.slice(1).every(c => lerRel(c) !== undefined)) && !lerRel(rows[0][1]);
+  if (ehMatriz){
+    R.formato = 'matriz';
+    const discs = rows[0].slice(1).map(limpar);
+    discs.forEach(d => d && R.disciplinas.push(d));
+    corpo.forEach(r => {
+      const a = limpar(r[0] || ''); if (!a) return;
+      R.alunos.push(a);
+      r.slice(1).forEach((c, j) => { const rel = lerRel(c); if (rel && discs[j]) R.relacoes.push({ aluno: a, disciplina: discs[j], relacao: rel }); });
+    });
+    return R;
+  }
+  R.formato = 'lista de relações (sem cabeçalho)';
+  rows.forEach(r => linhaLista(R, r[0], r[1], r.length > 2 ? r[2] : 'gosta'));
+  return R;
+}
+function linhaLista(R, a, d, rel){
+  a = limpar(a || ''); d = limpar(d || '');
+  if (a) R.alunos.push(a);
+  if (d) R.disciplinas.push(d);
+  if (!a || !d) return;
+  const r = lerRel(rel || '');
+  if (r) R.relacoes.push({ aluno: a, disciplina: d, relacao: r });
+  else if (r === undefined) R.ignoradas++;
+}
+function lerJSON(obj){
+  const R = { alunos: [], disciplinas: [], relacoes: [], ignoradas: 0, formato: 'JSON', aparencia: null, posicoes: false };
+  if (obj && (obj.relacoes || obj.alunos || obj.disciplinas)){
+    (obj.alunos||[]).forEach(a => { const o = typeof a === 'string' ? {nome:a} : a; R.alunos.push(o); if (isFinite(o.x)) R.posicoes = true; });
+    (obj.disciplinas||[]).forEach(d => { const o = typeof d === 'string' ? {nome:d} : d; R.disciplinas.push(o); });
+    (obj.relacoes||[]).forEach(r => { const rel = lerRel(r.relacao || r.rel || ''); if (rel && r.aluno && r.disciplina) R.relacoes.push({ aluno: r.aluno, disciplina: r.disciplina, relacao: rel, cor: r.cor }); else R.ignoradas++; });
+    if (obj.aparencia) R.aparencia = obj.aparencia;
+    return R;
+  }
+  const els = Array.isArray(obj) ? obj : (obj && obj.elements ? (Array.isArray(obj.elements) ? obj.elements : [].concat(obj.elements.nodes||[], obj.elements.edges||[])) : null);
+  if (!els) throw new Error('JSON não reconhecido.');
+  R.formato = 'JSON do Cytoscape';
+  const nomes = {};
+  els.filter(e => e.data && e.data.source === undefined).forEach(e => {
+    const t = (e.data.tipo || e.data.type || '') + '';
+    const nome = e.data.label || e.data.name || e.data.id;
+    nomes[e.data.id] = { nome, tipo: /disc|subj|mat/i.test(t) ? 'disciplina' : 'aluno' };
+    const o = { nome, cor: e.data.cor, x: e.position && e.position.x, y: e.position && e.position.y };
+    if (isFinite(o.x)) R.posicoes = true;
+    (nomes[e.data.id].tipo === 'aluno' ? R.alunos : R.disciplinas).push(o);
+  });
+  els.filter(e => e.data && e.data.source !== undefined).forEach(e => {
+    const s = nomes[e.data.source], t = nomes[e.data.target];
+    const rel = lerRel(e.data.rel || e.data.relacao || e.data.type || 'gosta');
+    if (!s || !t || s.tipo === t.tipo || !rel){ R.ignoradas++; return; }
+    const a = s.tipo === 'aluno' ? s : t, d = s.tipo === 'aluno' ? t : s;
+    R.relacoes.push({ aluno: a.nome, disciplina: d.nome, relacao: rel, cor: e.data.cor });
+  });
+  return R;
+}
+function aplicarImport(R, substituir){
+  guardar();
+  if (substituir) cy.elements().remove();
+  cy.batch(() => {
+    R.alunos.forEach(a => typeof a === 'string' ? addNo('aluno', a) : addNo('aluno', a.nome || a.label || '', a));
+    R.disciplinas.forEach(d => typeof d === 'string' ? addNo('disciplina', d) : addNo('disciplina', d.nome || d.label || '', d));
+    R.relacoes.forEach(r => addRelacao(r.aluno, r.disciplina, r.relacao, r));
+  });
+  if (R.aparencia){ S = mesclar(PADRAO, R.aparencia); sincronizar(); }
+  depois(false);
+  if (R.posicoes && substituir) cy.fit(undefined, 60); else layout();
+  const nA = new Set(R.alunos.map(a => chave(a.nome || a))).size, nD = new Set(R.disciplinas.map(d => chave(d.nome || d))).size;
+  avisar('Importado (' + R.formato + '): ' + nA + ' alunos, ' + nD + ' disciplinas, ' + R.relacoes.length + ' relações' + (R.ignoradas ? ' · ' + R.ignoradas + ' linha(s) com relação desconhecida ignorada(s)' : '') + '.', 5000);
+}
+function importarTexto(texto, nomeArq){
+  try {
+    const t = texto.trim();
+    const R = (/\.json$/i.test(nomeArq || '') || t.startsWith('{') || t.startsWith('[')) ? lerJSON(JSON.parse(t)) : lerTabela(t);
+    if (!R.alunos.length && !R.disciplinas.length){ avisar('Não encontrei alunos nem disciplinas nesse conteúdo.'); return; }
+    aplicarImport(R, modoImport === 'substituir');
+  } catch (e) { mensagem('Não consegui importar', '<p>' + esc(e.message || e) + '</p><p class="dica">Confira os formatos aceitos na aba Importar.</p>'); }
+}
+function lerArquivo(f){
+  if (!f) return;
+  if (/\.(xlsx?|ods)$/i.test(f.name)){ mensagem('Planilha não suportada diretamente', '<p>Abra a planilha no Excel, LibreOffice ou Google Planilhas e salve/baixe como <b>CSV</b>. Depois importe o CSV aqui.</p>'); return; }
+  const r = new FileReader();
+  r.onload = () => importarTexto(String(r.result), f.name);
+  r.onerror = () => avisar('Não foi possível ler o arquivo.');
+  r.readAsText(f, 'utf-8');
+}
+const zona = $('#zonaSoltar');
+zona.onclick = () => $('#inArquivo').click();
+zona.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); $('#inArquivo').click(); } };
+$('#inArquivo').onchange = ev => { lerArquivo(ev.target.files[0]); ev.target.value = ''; };
+['dragenter','dragover'].forEach(t => zona.addEventListener(t, ev => { ev.preventDefault(); zona.classList.add('sobre'); }));
+['dragleave','drop'].forEach(t => zona.addEventListener(t, ev => { ev.preventDefault(); zona.classList.remove('sobre'); }));
+zona.addEventListener('drop', ev => lerArquivo(ev.dataTransfer.files[0]));
+// também aceita soltar o arquivo em cima da rede
+const mainEl = document.querySelector('main');
+mainEl.addEventListener('dragover', ev => { if (ev.dataTransfer && Array.from(ev.dataTransfer.types).includes('Files')) ev.preventDefault(); });
+mainEl.addEventListener('drop', ev => { if (ev.dataTransfer && ev.dataTransfer.files.length){ ev.preventDefault(); lerArquivo(ev.dataTransfer.files[0]); } });
+$('#btnImportarTexto').onclick = () => { const t = $('#inTexto').value; if (!t.trim()){ avisar('Cole o conteúdo na caixa de texto.'); return; } importarTexto(t); };
+
+/* ---------- Exportação ---------- */
+const csvCampo = v => /[",;\n]/.test(v) ? '"' + String(v).replace(/"/g,'""') + '"' : v;
+function paraCSV(){
+  const linhas = ['aluno,disciplina,relacao'];
+  cy.edges().forEach(e => linhas.push([e.source().data('label'), e.target().data('label'), e.data('rel')].map(csvCampo).join(',')));
+  cy.nodes().filter(n => n.degree(false) === 0).forEach(n => linhas.push(n.data('tipo') === 'aluno' ? csvCampo(n.data('label')) + ',,' : ',' + csvCampo(n.data('label')) + ','));
+  return linhas.join('\n') + '\n';
+}
+function paraJSON(){
+  const no = n => { const p = n.position(); const o = { nome: n.data('label'), x: Math.round(p.x), y: Math.round(p.y) }; if (n.data('cor')) o.cor = n.data('cor'); return o; };
+  return {
+    formato: 'rede-bipartida-turma', versao: 1,
+    alunos: cy.nodes('[tipo="aluno"]').map(no),
+    disciplinas: cy.nodes('[tipo="disciplina"]').map(no),
+    relacoes: cy.edges().map(e => { const o = { aluno: e.source().data('label'), disciplina: e.target().data('label'), relacao: e.data('rel') }; if (e.data('cor')) o.cor = e.data('cor'); return o; }),
+    aparencia: S
+  };
+}
+const downloadsP = (window.claude && typeof window.claude.use === 'function') ? Promise.resolve(window.claude.use('downloads')).catch(() => null) : Promise.resolve(null);
+async function salvarArquivo(nome, dados){
+  const dl = await downloadsP;
+  if (dl){
+    try { await dl.save({ filename: nome, data: dados }); avisar('Arquivo salvo: ' + nome); }
+    catch (e) { if (e && e.code === 'declined') avisar('Download cancelado.'); else if (e && e.code === 'rate_limited') avisar('Aguarde um instante e tente de novo.'); else baixarDireto(nome, dados); }
+    return;
+  }
+  baixarDireto(nome, dados);
+}
+function baixarDireto(nome, dados){
+  try {
+    const blob = dados instanceof Blob ? dados : new Blob([dados], { type: /\.json$/.test(nome) ? 'application/json' : 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch (e) {
+    if (typeof dados === 'string') mostrarTexto('Copie o conteúdo', dados); else avisar('Não foi possível baixar aqui.');
+  }
+}
+function vazioAviso(){ if (!cy.elements().length){ avisar('A rede está vazia.'); return true; } return false; }
+$('#btnExpCSV').onclick = () => { if (!vazioAviso()) salvarArquivo('rede-turma.csv', '﻿' + paraCSV()); };
+$('#btnExpJSON').onclick = () => { if (!vazioAviso()) salvarArquivo('rede-turma.json', JSON.stringify(paraJSON(), null, 2)); };
+$('#btnExpPNG').onclick = async () => {
+  if (vazioAviso()) return;
+  const blob = await cy.png({ output: 'blob-promise', full: true, scale: 3, bg: $('#chkPngTransp').checked ? undefined : S.fundo });
+  salvarArquivo('rede-turma.png', blob);
+};
+$('#btnModelo').onclick = () => salvarArquivo('modelo-rede-turma.csv', '﻿aluno,disciplina,relacao\nAna,Matemática,gosta\nAna,História,odeia\nBruno,Matemática,odeia\nBruno,Artes,gosta\n');
+$('#btnCopiarCSV').onclick = () => {
+  if (vazioAviso()) return;
+  const t = paraCSV();
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => avisar('CSV copiado!'), () => mostrarTexto('Copie o CSV', t));
+  else mostrarTexto('Copie o CSV', t);
+};
+
+/* ---------- Controles de aparência ---------- */
+$$('.selForma').forEach(s => s.innerHTML = FORMAS.map(([v,t]) => '<option value="'+v+'">'+t+'</option>').join(''));
+$$('.selTraco').forEach(s => s.innerHTML = TRACOS.map(([v,t]) => '<option value="'+v+'">'+t+'</option>').join(''));
+function sincronizar(){
+  $$('[data-bind]').forEach(el => {
+    const v = getPath(S, el.dataset.bind);
+    if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+  });
+  $$('output[data-out]').forEach(o => o.textContent = getPath(S, o.dataset.out));
+  aplicarEstilo(); renderAnalise();
+}
+$$('[data-bind]').forEach(el => {
+  const ev = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input';
+  el.addEventListener(ev, () => {
+    const p = el.dataset.bind;
+    let v = el.type === 'checkbox' ? el.checked : el.value;
+    if (el.type === 'range') v = +v;
+    setPath(S, p, v);
+    const o = document.querySelector('output[data-out="'+p+'"]'); if (o) o.textContent = v;
+    aplicarEstilo();
+    if (/\.cor$/.test(p)) renderAnalise();
+    if (el.hasAttribute('data-relayout')){ clearTimeout(el._t); el._t = setTimeout(layout, ev === 'input' ? 150 : 0); }
+    if (p === 'rotuloPos' || p === 'orientacao') cy.style().update();
+    salvarLocal();
+  });
+});
+$('#temas').innerHTML = TEMAS.map((t,i) => '<button class="btn peq tema" data-tema="'+i+'">'+t.cores.map(c => '<i style="background:'+c+'"></i>').join('')+' '+esc(t.nome)+'</button>').join('');
+$('#temas').onclick = ev => {
+  const b = ev.target.closest('[data-tema]'); if (!b) return;
+  const t = TEMAS[+b.dataset.tema];
+  const manter = { layout:S.layout, orientacao:S.orientacao, ordem:S.ordem, espacamento:S.espacamento, autoLayout:S.autoLayout, rotuloPos:S.rotuloPos, legenda:S.legenda, destacar:S.destacar };
+  S = mesclar(mesclar(PADRAO, manter), t.v);
+  sincronizar(); salvarLocal();
+};
+$('#btnRestaurar').onclick = () => { const l = { layout:S.layout }; S = mesclar(PADRAO, l); sincronizar(); layout(); salvarLocal(); };
+
+/* ---------- Construir ---------- */
+function nomesDe(txt){ return txt.split(/[,;\n]/).map(limpar).filter(Boolean); }
+function adicionarVarios(tipo, input){
+  const nomes = nomesDe(input.value);
+  if (!nomes.length){ avisar('Digite pelo menos um nome.'); input.focus(); return; }
+  let novos = 0;
+  mudar(() => nomes.forEach(n => { if (cy.getElementById(idNo(tipo, n)).empty()){ addNo(tipo, n); novos++; } }), true);
+  input.value = ''; input.focus();
+  avisar(novos ? novos + (tipo==='aluno' ? ' aluno(s)' : ' disciplina(s)') + ' adicionado(s).' : 'Esses nomes já estavam na rede.');
+}
+$('#btnAddAluno').onclick = () => adicionarVarios('aluno', $('#inAluno'));
+$('#btnAddDisc').onclick = () => adicionarVarios('disciplina', $('#inDisc'));
+$('#inAluno').onkeydown = ev => { if (ev.key === 'Enter') $('#btnAddAluno').click(); };
+$('#inDisc').onkeydown = ev => { if (ev.key === 'Enter') $('#btnAddDisc').click(); };
+function ligar(){
+  const a = limpar($('#inRelAluno').value), d = limpar($('#inRelDisc').value);
+  if (!a || !d){ avisar('Informe o aluno e a disciplina.'); return; }
+  const novoNo = cy.getElementById(idNo('aluno', a)).empty() || cy.getElementById(idNo('disciplina', d)).empty();
+  const r = mudar(() => addRelacao(a, d, relAtual), novoNo);
+  if (!novoNo && S.layout === 'bipartido' && S.ordem === 'baricentro' && S.autoLayout) layout();
+  avisar(r === 'nova' ? a + ' ' + relAtual + ' de ' + d + '.' : (r === 'alterada' ? 'Relação atualizada: ' + a + ' agora ' + relAtual + ' de ' + d + '.' : 'Essa relação já existia.'));
+  $('#inRelDisc').value = ''; $('#inRelDisc').focus();
+}
+$('#btnAddRel').onclick = ligar;
+$('#inRelDisc').onkeydown = ev => { if (ev.key === 'Enter') ligar(); };
+$('#inRelAluno').onkeydown = ev => { if (ev.key === 'Enter') $('#inRelDisc').focus(); };
+$('#segRel').onclick = ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  relAtual = b.dataset.rel;
+  $$('#segRel button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  textoAviso();
+};
+$('#segModo').onclick = ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  modoImport = b.dataset.modo;
+  $$('#segModo button').forEach(x => x.setAttribute('aria-pressed', x === b));
+};
+$('#chkConectar').onchange = ev => modoConectar(ev.target.checked);
+$('#avisoSair').onclick = () => modoConectar(false);
+$('#btnDesfazer').onclick = desfazer;
+$('#btnExcluir').onclick = excluirSelecao;
+$('#btnLimpar').onclick = () => { if (!cy.elements().length) return; confirmar('Apagar toda a rede?', 'Você pode desfazer depois com o botão Desfazer.').then(ok => { if (ok){ mudar(() => cy.elements().remove(), false); } }); };
+$('#btnExemplo').onclick = () => {
+  const go = () => aplicarImport(lerTabela(EXEMPLO), true);
+  if (cy.elements().length) confirmar('Carregar o exemplo?', 'A rede atual será substituída (dá para desfazer).').then(ok => ok && go()); else go();
+};
+['btnLayout','btnLayout2'].forEach(id => $('#'+id).onclick = layout);
+['btnAjustar','btnAjustar2'].forEach(id => $('#'+id).onclick = () => cy.animate({ fit: { padding: 60 }, duration: 300 }));
+$('#btnZoomMais').onclick = () => cy.animate({ zoom: { level: cy.zoom() * 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }, duration: 150 });
+$('#btnZoomMenos').onclick = () => cy.animate({ zoom: { level: cy.zoom() / 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }, duration: 150 });
+
+$$('.aba').forEach(b => b.onclick = () => {
+  $$('.aba').forEach(x => x.setAttribute('aria-selected', x === b));
+  $$('.painel').forEach(p => p.classList.toggle('ativo', p.id === 'p-' + b.dataset.aba));
+});
+
+document.addEventListener('keydown', ev => {
+  const tag = (ev.target.tagName || '').toLowerCase();
+  const digitando = tag === 'input' || tag === 'textarea' || tag === 'select' || ev.target.isContentEditable;
+  if ($('#modalFundo').classList.contains('on') || $('#projFundo').classList.contains('on')){ if (ev.key === 'Escape'){ fecharModal(null); $('#projFechar').click(); } return; }
+  if (digitando) return;
+  if ((ev.key === 'Delete' || ev.key === 'Backspace') && cy.$(':selected').length){ ev.preventDefault(); excluirSelecao(); }
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z'){ ev.preventDefault(); desfazer(); }
+  else if (ev.key === 'Escape'){ modoConectar(false); cy.elements().unselect(); destacar(null); }
+});
+
+/* ---------- Modais e avisos ---------- */
+let tToast = null;
+function avisar(t, ms){ const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tToast); tToast = setTimeout(() => el.classList.remove('on'), ms || 2600); }
+let resolverModal = null;
+function abrirModal(html){ $('#modal').innerHTML = html; $('#modalFundo').classList.add('on'); return new Promise(r => resolverModal = r); }
+function fecharModal(v){ $('#modalFundo').classList.remove('on'); if (resolverModal){ const r = resolverModal; resolverModal = null; r(v); } }
+$('#modalFundo').addEventListener('click', ev => {
+  if (ev.target === $('#modalFundo')) return fecharModal(null);
+  const b = ev.target.closest('[data-m]'); if (!b) return;
+  if (b.dataset.m === 'ok'){ const i = $('#modal input[type=text]'); fecharModal(i ? i.value : true); }
+  else if (b.dataset.m === 'copiar'){ const ta = $('#modal textarea'); ta.select(); if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(() => avisar('Copiado!'), () => avisar('Selecionei o texto: use Ctrl+C.')); }
+  else fecharModal(null);
+});
+function confirmar(titulo, texto){ return abrirModal('<h2>'+esc(titulo)+'</h2><p>'+esc(texto)+'</p><div class="acoes"><button class="btn" data-m="nao">Cancelar</button><button class="btn prim" data-m="ok">Confirmar</button></div>').then(v => v === true); }
+function mensagem(titulo, html){ return abrirModal('<h2>'+esc(titulo)+'</h2>'+html+'<div class="acoes"><button class="btn prim" data-m="nao">Entendi</button></div>'); }
+function pedirTexto(titulo, valor){
+  const p = abrirModal('<h2>'+esc(titulo)+'</h2><input type="text" style="width:100%" value="'+esc(valor)+'"><div class="acoes"><button class="btn" data-m="nao">Cancelar</button><button class="btn prim" data-m="ok">Salvar</button></div>');
+  const i = $('#modal input'); i.focus(); i.select();
+  i.onkeydown = ev => { if (ev.key === 'Enter') fecharModal(i.value); };
+  return p.then(v => typeof v === 'string' ? v : null);
+}
+function mostrarTexto(titulo, texto){ abrirModal('<h2>'+esc(titulo)+'</h2><textarea style="min-height:200px">'+esc(texto)+'</textarea><div class="acoes"><button class="btn" data-m="copiar">Copiar</button><button class="btn prim" data-m="nao">Fechar</button></div>'); }
+$('#btnAjuda').onclick = () => mensagem('Como usar', `
+  <p><b>1. Construir.</b> Adicione alunos e disciplinas (vários de uma vez, separados por vírgula). Em <i>Criar relações</i>, escolha um aluno, uma disciplina e se ele <span style="color:${S.gosta.cor}">♥ gosta</span> ou <span style="color:${S.odeia.cor}">✕ odeia</span>. Ou ative o <b>modo conectar</b> e toque nos nós da rede.</p>
+  <p><b>2. Importar.</b> Arraste um CSV (lista <i>aluno, disciplina, relação</i> ou matriz alunos × disciplinas) ou cole o texto. O JSON exportado restaura a rede com posições e cores.</p>
+  <p><b>3. Personalizar.</b> Na aba <i>Aparência</i>, troque o layout, as cores, formas, tamanhos, traços e rótulos. Clique num nó ou aresta para mudar só a cor dele.</p>
+  <p><b>4. Analisar.</b> Veja quais disciplinas são mais amadas ou odiadas e gere a <b>projeção</b> da rede (alunos com gostos parecidos).</p>
+  <p class="dica">Clique duplo: renomear nó / inverter relação. <kbd>Del</kbd> exclui, <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz, <kbd>Esc</kbd> cancela. A rede fica salva neste navegador.</p>`);
+
+/* ---------- Exemplo e início ---------- */
+const EXEMPLO = `aluno,Matemática,Português,Biologia,História,Física,Química,Educação Física,Artes
+Ana,1,0,1,-1,1,0,0,-1
+Bruno,-1,1,0,1,-1,0,1,0
+Carla,0,1,1,0,0,-1,-1,1
+Diego,1,-1,0,0,1,1,1,0
+Elisa,-1,1,1,1,0,0,0,1
+Felipe,1,0,-1,-1,1,1,1,0
+Gabriela,0,1,1,0,-1,-1,0,1
+Heitor,-1,0,0,1,0,-1,1,1
+Isabela,1,0,1,0,0,1,-1,0
+João,0,-1,0,1,-1,0,1,1`;
+
+const salvo = lerLocal();
+sincronizar();
+if (salvo && ((salvo.alunos && salvo.alunos.length) || (salvo.disciplinas && salvo.disciplinas.length))){
+  try {
+    const R = lerJSON(salvo);
+    cy.batch(() => {
+      R.alunos.forEach(a => addNo('aluno', a.nome, a));
+      R.disciplinas.forEach(d => addNo('disciplina', d.nome, d));
+      R.relacoes.forEach(r => addRelacao(r.aluno, r.disciplina, r.relacao, r));
+    });
+    if (R.aparencia){ S = mesclar(PADRAO, R.aparencia); sincronizar(); }
+    depois(false); cy.fit(undefined, 60);
+  } catch (e) { aplicarImport(lerTabela(EXEMPLO), true); }
+} else if (salvo) {
+  if (salvo.aparencia){ S = mesclar(PADRAO, salvo.aparencia); sincronizar(); }
+  depois(false);
+} else {
+  aplicarImport(lerTabela(EXEMPLO), true);
+  pilha.length = 0;
+  $('#toast').classList.remove('on');
+}
+$('#btnDesfazer').disabled = !pilha.length;
+window.addEventListener('resize', () => cy.resize());
+})();
+</script>
+</body>
+</html>
